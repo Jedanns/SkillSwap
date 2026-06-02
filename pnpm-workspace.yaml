@@ -1,6 +1,14 @@
+allowBuilds:
+  '@prisma/engines': false
+  msw: false
+  prisma: false
+  sharp: false
+  unrs-resolver: false
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+minimumReleaseAgeExclude:
+  - shadcn@4.10.0
 onlyBuiltDependencies:
   - "@prisma/client"
   - "@prisma/engines"
