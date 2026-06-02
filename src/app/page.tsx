@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/landing/navbar";
 import { Hero } from "@/components/landing/hero";
+import DemoPortal from "@/components/landing/demo/demo-portal";
 import { BentoGrid } from "@/components/landing/bento-grid";
 import { FeatureRows } from "@/components/landing/feature-rows";
 import { SocialProof } from "@/components/landing/social-proof";
@@ -14,6 +15,7 @@ export default function Home() {
       <Navbar />
       <main className="flex-1">
         <Hero />
+        <DemoPortal />
         <BentoGrid />
         <FeatureRows />
         <SocialProof />

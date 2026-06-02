@@ -1,18 +1,51 @@
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  GraduationCap,
-  Pencil,
-  Sparkle,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, GraduationCap, Pencil, Sparkle, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { HERO, SCHOOL_DOMAIN } from "@/lib/landing-content";
 
 import { Reveal } from "./reveal";
+
+/**
+ * Long, hand-drawn-style curving arrow. The curve is a dashed stroke whose
+ * dashoffset animates, so the "bits of line" appear to travel toward the
+ * arrowhead. Aim it by rotating/positioning via `className`.
+ */
+function CurvyArrow({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <svg
+      viewBox="0 0 130 130"
+      fill="none"
+      aria-hidden
+      className={className}
+      style={style}
+    >
+      {/* The travelling curve */}
+      <path
+        d="M14 16 Q 120 26 112 110"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+        className="animate-dash"
+      />
+      {/* Static arrowhead at the curve's end */}
+      <path
+        d="M112 110 L 98 100 M112 110 L 121 94"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export function Hero() {
   return (
@@ -40,14 +73,11 @@ export function Hero() {
             className="animate-twinkle pointer-events-none absolute -top-8 right-2 hidden size-5 text-peach lg:block"
             style={{ animationDelay: "0.6s" }}
           />
-          <ArrowUpRight
-            aria-hidden
-            className="animate-sway pointer-events-none absolute -left-12 top-1/2 hidden size-6 text-powder lg:block"
-            style={{ animationDelay: "1.2s" }}
-          />
+          {/* Long curving arrow sweeping up toward the headline, from the left */}
+          <CurvyArrow className="pointer-events-none absolute -left-24 top-2 hidden size-28 -rotate-[100deg] text-powder lg:block" />
 
           <Reveal delay={60}>
-            <h1 className="font-heading text-[clamp(2.75rem,7vw,5.5rem)] font-black leading-[0.98] tracking-[-0.035em] text-ink">
+            <h1 className="font-heading text-[clamp(2.5rem,9vw,5.5rem)] font-black leading-[0.98] tracking-[-0.035em] text-ink">
               {HERO.title.map((line, i) => (
                 <span key={i} className="block">
                   {line}
@@ -62,11 +92,11 @@ export function Hero() {
             </p>
           </Reveal>
 
-          <Reveal delay={180}>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Reveal delay={180} className="w-full sm:w-auto">
+            <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
               <Button
                 asChild
-                className="h-12 rounded-full bg-ink px-6 text-base text-surface hover:bg-ink/90"
+                className="h-12 w-full rounded-full bg-ink px-6 text-base text-surface hover:bg-ink/90 sm:w-auto"
               >
                 <Link href={HERO.primaryCta.href}>
                   {HERO.primaryCta.label}
@@ -76,7 +106,7 @@ export function Hero() {
               <Button
                 asChild
                 variant="outline"
-                className="h-12 rounded-full border-hairline bg-surface px-6 text-base text-ink hover:bg-canvas"
+                className="h-12 w-full rounded-full border-hairline bg-surface px-6 text-base text-ink hover:bg-canvas sm:w-auto"
               >
                 <a href={HERO.secondaryCta.href}>{HERO.secondaryCta.label}</a>
               </Button>
@@ -105,7 +135,7 @@ export function Hero() {
           />
           <Pencil
             aria-hidden
-            className="animate-sway pointer-events-none absolute right-6 bottom-10 z-10 size-5 text-powder"
+            className="animate-sway pointer-events-none absolute right-6 bottom-10 z-10 hidden size-5 text-powder sm:block"
             style={{ animationDelay: "1.6s" }}
           />
           <Sparkles
@@ -113,6 +143,8 @@ export function Hero() {
             className="animate-twinkle pointer-events-none absolute left-6 top-6 z-10 size-5 text-deep-green/60"
             style={{ animationDelay: "0.3s" }}
           />
+          {/* Long curving arrow sweeping in toward the image from the top-left */}
+          <CurvyArrow className="pointer-events-none absolute -left-6 -top-10 z-10 hidden size-28 rotate-[30deg] text-deep-green/50 sm:block" />
 
           <div className="animate-float">
             <Image

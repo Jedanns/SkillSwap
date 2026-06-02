@@ -13,9 +13,9 @@ type BentoCardProps = {
 };
 
 const SPAN_CLASS: Record<string, string> = {
-  wide: "md:col-span-2",
+  wide: "sm:col-span-2 md:col-span-2",
   tall: "md:row-span-2",
-  full: "md:col-span-3",
+  full: "sm:col-span-2 md:col-span-3",
   default: "",
 };
 
