@@ -176,6 +176,28 @@
     animation: float 6s ease-in-out infinite;
     will-change: transform;
   }
+
+  /* Decorative ornaments: a soft "light" pulse and a lazy sway. */
+  .animate-twinkle {
+    animation: twinkle 3.2s ease-in-out infinite;
+    will-change: opacity, transform;
+  }
+  .animate-sway {
+    animation: sway 5.5s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  /* Flowing dashed line — "bits of line" travelling along an SVG path. */
+  .animate-dash {
+    stroke-dasharray: 7 11;
+    animation: dash-flow 1.4s linear infinite;
+  }
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -36;
+  }
 }
 
 @keyframes float {
@@ -185,6 +207,28 @@
   }
   50% {
     transform: translateY(-8px);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(4deg);
   }
 }
 
@@ -206,7 +250,10 @@
   .animate-marquee {
     animation: none;
   }
-  .animate-float {
+  .animate-float,
+  .animate-twinkle,
+  .animate-sway,
+  .animate-dash {
     animation: none;
   }
 }

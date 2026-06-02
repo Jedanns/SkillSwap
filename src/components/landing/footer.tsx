@@ -9,7 +9,7 @@ export function Footer() {
         <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(4,1fr)]">
           {/* Brand column */}
           <div className="max-w-xs">
-            <Wordmark tone="surface" />
+            <Wordmark className="h-11" />
             <p className="mt-4 text-sm leading-relaxed text-surface/60">
               Le tutorat entre pairs du campus DSP F2I. Apprends, enseigne et
               fais certifier tes compétences, entre étudiants.
