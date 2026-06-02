@@ -4,7 +4,7 @@ import { jwtVerify } from "jose";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 // Public routes — always accessible whether logged in or not.
-const PUBLIC_PATHS = ["/login", "/register", "/complete-account"];
+const PUBLIC_PATHS = ["/login", "/register", "/complete-account", "/dev"];
 
 // Auth routes — redirect to /dashboard when already logged in.
 const AUTH_ONLY_PATHS = ["/login", "/register", "/complete-account"];
@@ -36,6 +36,11 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
+  }
+
+  // API routes handle their own auth — never redirect them
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next({ request });
   }
 
   // Redirect unauthenticated users away from protected pages

@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { type NextRequest } from "next/server";
 
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 const COOKIE_NAME = "session";
@@ -54,4 +55,17 @@ export function isAllowedDomain(email: string): boolean {
     .filter(Boolean);
   const domain = email.split("@")[1]?.toLowerCase();
   return !!domain && allowed.includes(domain);
+}
+
+/**
+ * Dev-only bypass: if NODE_ENV=development and the request carries a
+ * `x-dev-profile-id` header, return a fake session so routes can be tested
+ * without a real login. Never active in production.
+ */
+export async function getSessionFromRequest(req: NextRequest): Promise<SessionPayload | null> {
+  if (process.env.NODE_ENV === "development") {
+    const devId = req.headers.get("x-dev-profile-id");
+    if (devId) return { profileId: devId, email: "dev@local" };
+  }
+  return getSession();
 }

@@ -10,7 +10,7 @@ export async function sendAccountCompletionEmail(
   const link = `${baseUrl}/complete-account?token=${token}`;
 
   await resend.emails.send({
-    from: process.env.EMAIL_FROM ?? "walkerabraham48@gmail.com>",
+    from: process.env.EMAIL_FROM ?? "onboarding@resend.dev",
     to: email,
     subject: "Finalisez votre compte",
     html: `
