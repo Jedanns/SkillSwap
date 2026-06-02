@@ -95,3 +95,9 @@ export function smoothstep(a: number, b: number, x: number): number {
   const t = clamp01((x - a) / (b - a));
   return t * t * (3 - 2 * t);
 }
+
+/** Smootherstep (Ken Perlin) — gentler accel/decel than smoothstep. */
+export function smootherstep(a: number, b: number, x: number): number {
+  const t = clamp01((x - a) / (b - a));
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
