@@ -39,7 +39,7 @@ export function SectionHeading({
       </span>
       <h2
         className={cn(
-          "max-w-2xl font-heading text-[clamp(2rem,5vw,3.5rem)] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink",
+          "max-w-2xl text-balance font-heading text-[clamp(2rem,5vw,3.5rem)] font-extrabold leading-[1.02] tracking-[-0.03em] text-ink",
           centered && "mx-auto",
         )}
       >
@@ -48,7 +48,7 @@ export function SectionHeading({
       {kicker ? (
         <p
           className={cn(
-            "max-w-xl text-base leading-relaxed text-muted-ink sm:text-lg",
+            "max-w-xl text-pretty text-base leading-relaxed text-muted-ink sm:text-lg",
             centered && "mx-auto",
           )}
         >

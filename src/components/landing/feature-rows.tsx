@@ -17,7 +17,7 @@ export function FeatureRows() {
           kicker="Quatre étapes pour transformer une demande d’aide en compétence reconnue sur le campus."
         />
 
-        <div className="mt-16 flex flex-col gap-20 md:gap-28">
+        <div className="mt-12 flex flex-col gap-16 sm:mt-16 md:gap-28">
           {FEATURE_ROWS.map((row) => (
             <FeatureRow key={row.id} {...row} />
           ))}

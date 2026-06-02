@@ -30,16 +30,16 @@ export function FinalCta() {
           <span className="font-mono text-xs font-medium uppercase tracking-[0.18em] text-pistache">
             {FINAL_CTA.eyebrow}
           </span>
-          <h2 className="mx-auto mt-4 max-w-2xl font-heading text-[clamp(2rem,5vw,3.5rem)] font-black leading-[1.02] tracking-[-0.03em] text-surface">
+          <h2 className="mx-auto mt-4 max-w-2xl text-balance font-heading text-[clamp(2rem,5vw,3.5rem)] font-black leading-[1.02] tracking-[-0.03em] text-surface">
             {FINAL_CTA.title}
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-surface/75 sm:text-lg">
+          <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-surface/75 sm:text-lg">
             {FINAL_CTA.body}
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button
               asChild
-              className="h-12 rounded-full bg-pistache px-6 text-base text-deep-green hover:bg-pistache/90"
+              className="h-12 w-full rounded-full bg-pistache px-6 text-base text-deep-green hover:bg-pistache/90 sm:w-auto"
             >
               <Link href={FINAL_CTA.primaryCta.href}>
                 {FINAL_CTA.primaryCta.label}
@@ -49,7 +49,7 @@ export function FinalCta() {
             <Button
               asChild
               variant="outline"
-              className="h-12 rounded-full border-surface/25 bg-transparent px-6 text-base text-surface hover:bg-surface/10 hover:text-surface"
+              className="h-12 w-full rounded-full border-surface/25 bg-transparent px-6 text-base text-surface hover:bg-surface/10 hover:text-surface sm:w-auto"
             >
               <Link href={FINAL_CTA.secondaryCta.href}>
                 {FINAL_CTA.secondaryCta.label}

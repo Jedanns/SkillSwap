@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 // Satoshi (the spec's first display choice) isn't on Google Fonts, so we use
 // DM Sans — the spec's named alternative — for display, Inter for body, DM Mono
 // for labels. All three are loaded via next/font for zero layout shift.
@@ -37,6 +37,13 @@ export const metadata: Metadata = {
     locale: "fr_FR",
     siteName: "SkillSwap",
   },
+};
+
+// The landing is intentionally light-only; lock the color scheme and tint the
+// mobile browser chrome to the brand canvas so it blends with the page.
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#f2f2f0",
 };
 
 export default function RootLayout({

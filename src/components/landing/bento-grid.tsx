@@ -21,7 +21,7 @@ export function BentoGrid() {
           kicker="Recherche, échange, sessions et suivi : chaque brique du parcours étudiant réunie dans une interface claire."
         />
 
-        <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3 md:auto-rows-[minmax(190px,auto)]">
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:mt-12 sm:grid-cols-2 sm:gap-5 md:grid-cols-3 md:auto-rows-[minmax(190px,auto)]">
           {BENTO_CARDS.map((card, i) => (
             <BentoCard key={card.id} index={i} {...card} />
           ))}

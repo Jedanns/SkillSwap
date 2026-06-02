@@ -6,9 +6,9 @@ export function Footer() {
   return (
     <footer className="bg-ink px-4 pb-10 pt-16 text-surface sm:px-6">
       <div className="mx-auto max-w-6xl">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(4,1fr)]">
-          {/* Brand column */}
-          <div className="max-w-xs">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-[1.4fr_repeat(4,1fr)]">
+          {/* Brand column — full width on mobile, first column on desktop */}
+          <div className="col-span-2 max-w-xs md:col-span-1">
             <Wordmark className="h-11" />
             <p className="mt-4 text-sm leading-relaxed text-surface/60">
               Le tutorat entre pairs du campus DSP F2I. Apprends, enseigne et
