@@ -1,8 +1,9 @@
-import { ACT3_IN, ACT3_SESSION, seg } from "./demo-timeline";
+import { type Skill } from "./demo-data";
+import { ACT3_IN, ACT3_OUT, ACT3_SESSION, seg } from "./demo-timeline";
 
 type ActPlanningProps = {
   u: number;
-  selectedSkill: string | null;
+  skill: Skill | null;
 };
 
 const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven"];
@@ -14,21 +15,25 @@ const SESSION_ROW = HOURS.indexOf(11) + 2;
 
 /**
  * Act 3 — the weekly planning. The grid fades in, then a session block lands on
- * Thursday 11:00 with its details (chosen skill, tutor, description).
+ * Thursday 11:00 with the chosen skill and its tutor.
  */
-export function ActPlanning({ u, selectedSkill }: ActPlanningProps) {
+export function ActPlanning({ u, skill }: ActPlanningProps) {
   const inP = seg(u, ACT3_IN);
+  const outP = seg(u, ACT3_OUT);
   const sessionP = seg(u, ACT3_SESSION);
-  const skill = selectedSkill ?? "React";
+  const opacity = inP * (1 - outP);
+
+  const name = skill?.name ?? "React";
+  const tutor = skill?.tutor ?? "Maxime D.";
 
   return (
     <div
-      aria-hidden={inP <= 0.5}
+      aria-hidden={opacity <= 0.5}
       className="absolute inset-0 z-40 flex flex-col items-center justify-center px-6 text-ink"
       style={{
-        opacity: inP,
-        transform: `scale(${0.95 + inP * 0.05})`,
-        pointerEvents: inP > 0.5 ? "auto" : "none",
+        opacity,
+        transform: `scale(${0.95 + inP * 0.05 + outP * 0.1})`,
+        pointerEvents: opacity > 0.5 ? "auto" : "none",
         willChange: "opacity, transform",
       }}
     >
@@ -43,7 +48,7 @@ export function ActPlanning({ u, selectedSkill }: ActPlanningProps) {
         className="mt-8 grid w-full max-w-2xl gap-px rounded-[20px] border border-black/10 bg-black/10 p-px"
         style={{
           gridTemplateColumns: "48px repeat(5, 1fr)",
-          gridTemplateRows: `auto repeat(${HOURS.length}, minmax(48px, 1fr))`,
+          gridTemplateRows: `auto repeat(${HOURS.length}, minmax(46px, 1fr))`,
         }}
       >
         {/* Header row */}
@@ -82,7 +87,7 @@ export function ActPlanning({ u, selectedSkill }: ActPlanningProps) {
           }}
         >
           <span className="font-heading text-[13px] font-bold leading-tight text-canvas">
-            {skill}
+            {name}
           </span>
           <span className="font-mono text-[9px] uppercase tracking-[0.06em] text-pistache">
             Jeu · 11:00
@@ -100,14 +105,14 @@ export function ActPlanning({ u, selectedSkill }: ActPlanningProps) {
       >
         <div className="flex items-center justify-between gap-3">
           <span className="font-heading text-[16px] font-bold tracking-[-0.02em] text-ink">
-            {skill} · Jeudi 11:00 – 12:00
+            {name} · Jeudi 11:00 – 12:00
           </span>
           <span className="rounded-full bg-deep-green px-3 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-canvas">
             Confirmée
           </span>
         </div>
         <p className="mt-2 text-[13px] leading-relaxed text-ink/55">
-          Session découverte avec Léa M. — bases, questions et exercices guidés.
+          Session découverte avec {tutor} — bases, questions et exercices guidés.
         </p>
       </div>
     </div>

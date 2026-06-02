@@ -4,15 +4,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { ActCompleted } from "./act-completed";
 import { ActDuality } from "./act-duality";
 import { ActPlanning } from "./act-planning";
+import { ActReview } from "./act-review";
 import { ActSkills } from "./act-skills";
+import { ActTutor } from "./act-tutor";
 import { ChaosButton } from "./chaos-button";
+import { type Skill } from "./demo-data";
 import { DemoIntroScreen } from "./demo-intro-screen";
 import styles from "./demo-portal.module.css";
 import {
   GATE_U,
   INTRO_OUT,
+  THEME_DARK,
   THEME_LIGHT,
   TOTAL_U,
   seg,
@@ -42,7 +47,7 @@ export default function DemoPortal() {
   const [visible, setVisible] = useState(false); // expanded (drives transition)
   const [origin, setOrigin] = useState("50% 50%");
   const [insets, setInsets] = useState<PanelInsets>({ top: 0, left: 0 });
-  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
+  const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -55,7 +60,8 @@ export default function DemoPortal() {
   // Scroll position in "viewport heights", and derived story state.
   const u = viewportH > 0 ? scrollY / viewportH : 0;
   const unlocked = selectedSkill !== null;
-  const lightP = seg(u, THEME_LIGHT);
+  // Light during the student section, back to dark for the tutor section.
+  const lightP = seg(u, THEME_LIGHT) * (1 - seg(u, THEME_DARK));
   const isLight = lightP > 0.5;
   const storyProgress = Math.min(1, u / TOTAL_U);
 
@@ -268,7 +274,16 @@ export default function DemoPortal() {
                   />
 
                   {/* Act 3 — planning + Thursday 11:00 session */}
-                  <ActPlanning u={u} selectedSkill={selectedSkill} />
+                  <ActPlanning u={u} skill={selectedSkill} />
+
+                  {/* Act 4 — course completed (card + green check) */}
+                  <ActCompleted u={u} skill={selectedSkill} />
+
+                  {/* Act 5 — review the course & the tutor */}
+                  <ActReview u={u} skill={selectedSkill} />
+
+                  {/* Act 6 — switch to tutor (back to dark) */}
+                  <ActTutor u={u} />
                 </div>
               </div>
             </div>

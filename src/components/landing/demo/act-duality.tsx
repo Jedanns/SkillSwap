@@ -19,9 +19,10 @@ const ROLES = [
 ];
 
 /**
- * Act 1 — "Chaque étudiant est à la fois élève et tuteur". As the user scrolls
- * the headline settles toward the top and the two role cards (Élève / Tuteur)
- * rise into view beneath it.
+ * Act 1 — "Chaque étudiant est à la fois élève et tuteur". The headline arrives
+ * perfectly centered; as the user scrolls it rises toward the top while the two
+ * role cards (Élève / Tuteur) — positioned absolutely so they never push the
+ * title off-centre — slide into view beneath it.
  */
 export function ActDuality({ u, viewportH }: ActDualityProps) {
   const inP = seg(u, ACT1_IN);
@@ -32,8 +33,8 @@ export function ActDuality({ u, viewportH }: ActDualityProps) {
   const scale = 0.94 + inP * 0.06 + outP * 0.12;
   const interactive = opacity > 0.5;
 
-  // Whole stack drifts up a little as the cards arrive (title "settles" up).
-  const stackShift = -settleP * viewportH * 0.12;
+  // Whole stack drifts up as the cards arrive (title "settles" toward the top).
+  const stackShift = -settleP * viewportH * 0.16;
 
   return (
     <div
@@ -47,26 +48,21 @@ export function ActDuality({ u, viewportH }: ActDualityProps) {
       }}
     >
       <div
-        className="flex w-full max-w-3xl flex-col items-center"
+        className="relative flex flex-col items-center"
         style={{ transform: `translateY(${stackShift}px)` }}
       >
         <h2 className="max-w-[640px] text-center font-heading text-[clamp(24px,3.6vw,46px)] font-bold leading-[1.12] tracking-[-0.03em] text-canvas">
           Chaque étudiant est à la fois{" "}
-          <span className="bg-gradient-to-r from-pistache to-pistache bg-clip-text text-transparent">
-            élève
-          </span>{" "}
-          et{" "}
-          <span className="bg-gradient-to-r from-peach to-peach bg-clip-text text-transparent">
-            tuteur
-          </span>
-          .
+          <span className="text-pistache">élève</span> et{" "}
+          <span className="text-peach">tuteur</span>.
         </h2>
 
+        {/* Absolutely positioned below the title so they don't affect centring. */}
         <div
-          className="mt-12 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6"
+          className="absolute left-1/2 top-full grid w-[min(90vw,640px)] grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6"
           style={{
             opacity: settleP,
-            transform: `translateY(${(1 - settleP) * 48}px)`,
+            transform: `translate(-50%, ${40 + (1 - settleP) * 40}px)`,
           }}
         >
           {ROLES.map((role) => (
