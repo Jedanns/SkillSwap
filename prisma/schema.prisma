@@ -98,6 +98,11 @@ enum LevelTrack {
   SKILL
 }
 
+enum AccountStatus {
+  PENDING
+  ACTIVE
+}
+
 enum ActivityType {
   POST_CREATED
   COMMENT_CREATED
@@ -149,7 +154,7 @@ model Promotion {
 /// `id` equals the Supabase auth user id (UUID) and is kept in sync by the
 /// `on_auth_user_created` trigger (see the RLS/trigger SQL migration).
 model Profile {
-  id       String  @id @db.Uuid
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email    String  @unique
   username String? @unique
 
@@ -162,6 +167,12 @@ model Profile {
   promotionId String? @map("promotion_id") @db.Uuid
   githubUrl   String? @map("github_url")
   linkedinUrl String? @map("linkedin_url")
+
+  // Authentication
+  passwordHash               String?       @map("password_hash")
+  accountStatus              AccountStatus @default(PENDING) @map("account_status")
+  verificationToken          String?       @unique @map("verification_token")
+  verificationTokenExpiresAt DateTime?     @map("verification_token_expires_at")
 
   // Onboarding — drives the forced redirect to profile completion (Volet 2).
   isProfileComplete Boolean   @default(false) @map("is_profile_complete")
