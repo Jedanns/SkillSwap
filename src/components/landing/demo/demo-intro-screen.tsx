@@ -3,32 +3,29 @@ import { cn } from "@/lib/utils";
 import styles from "./demo-portal.module.css";
 
 type DemoIntroScreenProps = {
-  /** Inner-container scrollTop, drives the ambient-orb parallax. */
-  scrollY: number;
-  /** Smooth-scroll to the first step section. */
+  /** Smooth-scroll to the first step scene. */
   onScrollNext: () => void;
 };
 
 /**
- * Screen 1 of the portal — a full-viewport intro. Ambient orbs drift at 0.3×
- * scroll speed; the label, headline and scroll hint fade in on a stagger.
+ * Content of the intro scene. On open the label/headline/scroll-hint fade in on
+ * a stagger (CSS); the depth exit (fade + zoom as you advance) is applied by the
+ * enclosing <DemoScene>, so there is no vertical scroll motion here.
  */
-export function DemoIntroScreen({ scrollY, onScrollNext }: DemoIntroScreenProps) {
+export function DemoIntroScreen({ onScrollNext }: DemoIntroScreenProps) {
   return (
-    <section className="relative flex h-full min-h-full flex-col items-center justify-center overflow-hidden px-6 text-center">
-      {/* Ambient orbs (parallax 0.3×) */}
+    <>
+      {/* Ambient orbs */}
       <div
         aria-hidden
         className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-pistache/40 blur-[80px]"
-        style={{ transform: `translateY(${scrollY * 0.3}px)` }}
       />
       <div
         aria-hidden
         className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-peach/40 blur-[80px]"
-        style={{ transform: `translateY(${scrollY * 0.3}px)` }}
       />
 
-      <div className="relative z-10 flex flex-col items-center">
+      <div className="relative z-10 flex flex-col items-center text-center">
         <span
           className={cn(
             styles.fadeUp,
@@ -90,6 +87,6 @@ export function DemoIntroScreen({ scrollY, onScrollNext }: DemoIntroScreenProps)
           </svg>
         </button>
       </div>
-    </section>
+    </>
   );
 }

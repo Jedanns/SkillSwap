@@ -6,15 +6,22 @@ import { cn } from "@/lib/utils";
 
 import { ChaosButton } from "./chaos-button";
 import { DemoIntroScreen } from "./demo-intro-screen";
+import { DemoScene } from "./demo-scene";
 import { DemoSection } from "./demo-section";
 import styles from "./demo-portal.module.css";
-import { useDemoParallax } from "./use-demo-parallax";
+import {
+  useDemoParallax,
+  usePrefersReducedMotion,
+} from "./use-demo-parallax";
 
 const SECTIONS = [
   { step: 1, accentColor: "#c7ddf2" }, // powder
   { step: 2, accentColor: "#c8f59d" }, // pistache
   { step: 3, accentColor: "#ffa06a" }, // peach
 ];
+
+// Intro + step scenes stacked in the depth track.
+const SCENE_COUNT = SECTIONS.length + 1;
 
 type PanelInsets = { top: number; left: number };
 
@@ -37,7 +44,11 @@ export default function DemoPortal() {
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { scrollY, progress } = useDemoParallax(scrollRef, mounted);
+  const { scrollY, progress, viewportH } = useDemoParallax(scrollRef, mounted);
+  const reduced = usePrefersReducedMotion();
+
+  // Scroll position expressed in scenes: 0 = intro framed, 1 = first step, …
+  const t = viewportH > 0 ? scrollY / viewportH : 0;
 
   const open = useCallback(() => {
     const vw = window.innerWidth;
@@ -199,23 +210,35 @@ export default function DemoPortal() {
               Fermer ✕
             </button>
 
-            {/* Inner scroll container */}
+            {/* Inner scroll container. The tall track provides scroll
+                distance; the sticky stage stays pinned while scenes cross-fade
+                and zoom along the z-axis (depth), so nothing scrolls vertically. */}
             <div
               ref={scrollRef}
               className="relative z-10 h-full overflow-y-auto overflow-x-hidden"
             >
-              <DemoIntroScreen
-                scrollY={scrollY}
-                onScrollNext={scrollToFirstStep}
-              />
-              {SECTIONS.map((s) => (
-                <DemoSection
-                  key={s.step}
-                  step={s.step}
-                  accentColor={s.accentColor}
-                  scrollY={scrollY}
-                />
-              ))}
+              <div
+                className="relative w-full"
+                style={{ height: viewportH ? viewportH * SCENE_COUNT : "100%" }}
+              >
+                <div
+                  className="sticky top-0 w-full overflow-hidden"
+                  style={{ height: viewportH || "100%" }}
+                >
+                  <DemoScene distance={t} reduced={reduced}>
+                    <DemoIntroScreen onScrollNext={scrollToFirstStep} />
+                  </DemoScene>
+                  {SECTIONS.map((s, i) => (
+                    <DemoScene
+                      key={s.step}
+                      distance={t - (i + 1)}
+                      reduced={reduced}
+                    >
+                      <DemoSection step={s.step} accentColor={s.accentColor} />
+                    </DemoScene>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </>

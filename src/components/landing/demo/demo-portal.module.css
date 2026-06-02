@@ -89,21 +89,6 @@
   }
 }
 
-/* Section entrance: fade in from below. JS toggles .sectionVisible via observer. */
-.section {
-  opacity: 0;
-  transform: translateY(40px);
-  transition:
-    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform;
-}
-
-.sectionVisible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 /* Subtle noise texture overlay for the dark portal. */
 .noise {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -120,10 +105,5 @@
   .fadeUp {
     opacity: 1;
     animation: none;
-  }
-  .section {
-    opacity: 1;
-    transform: none;
-    transition: none;
   }
 }
