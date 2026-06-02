@@ -88,6 +88,7 @@ as $$
 $$;
 
 -- ------------------------------ Enable RLS --------------------------
+alter table public.promotions                 enable row level security;
 alter table public.profiles                  enable row level security;
 alter table public.level_thresholds          enable row level security;
 alter table public.activity_events           enable row level security;
@@ -112,6 +113,10 @@ alter table public.notifications              enable row level security;
 -- ============================== Policies ============================
 -- Convention: any authenticated campus user may read shared catalogue/social
 -- content; writes are restricted to the owning row's FK = auth.uid().
+
+-- promotions (read-only reference; managed by service role) ----------
+create policy "promotions_select" on public.promotions
+  for select to authenticated using (true);
 
 -- profiles -----------------------------------------------------------
 create policy "profiles_select_authenticated" on public.profiles
@@ -275,3 +280,27 @@ create index if not exists tutoring_sessions_title_trgm_idx
   on public.tutoring_sessions using gin (title gin_trgm_ops);
 create index if not exists posts_content_trgm_idx
   on public.posts using gin (content gin_trgm_ops);
+
+-- ===================== Realtime (instant push) ======================
+-- Use Supabase Realtime "Postgres Changes" for instant, RLS-aware delivery —
+-- the client subscribes to its own rows and receives INSERTs with no polling
+-- and no extra infra. Add the tables that drive live UI to the publication.
+-- (REPLICA IDENTITY FULL lets row-level filters apply to updates/deletes too.)
+alter table public.notifications replica identity full;
+alter table public.messages      replica identity full;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications'
+  ) then
+    alter publication supabase_realtime add table public.notifications;
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'
+  ) then
+    alter publication supabase_realtime add table public.messages;
+  end if;
+end $$;

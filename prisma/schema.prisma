@@ -62,6 +62,7 @@ enum SessionStatus {
 }
 
 enum ParticipationStatus {
+  INVITED // added to a (public) session by the tutor from an open chat — awaits the student's approval
   PENDING
   APPROVED
   DECLINED
@@ -113,6 +114,7 @@ enum NotificationType {
   PING_RECEIVED
   MESSAGE_RECEIVED
   SESSION_PROPOSED
+  SESSION_INVITED
   SESSION_APPROVED
   SESSION_DECLINED
   SESSION_CANCELLED
@@ -126,6 +128,22 @@ enum NotificationType {
 }
 
 // ----------------------- Identity & gamification --------------------
+
+/// Campus promotion / cohort (e.g. "B3 Dev 2025-2026"). Gives `Profile.cohort`
+/// a real FK so the platform can filter & group by promo. The campus itself
+/// (DSP F2I) is implicit for now — add a `Campus` parent if the app ever goes
+/// multi-campus.
+model Promotion {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @unique
+  slug      String   @unique
+  startYear Int?     @map("start_year")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  profiles Profile[]
+
+  @@map("promotions")
+}
 
 /// Application profile, mirrored 1:1 from Supabase `auth.users`.
 /// `id` equals the Supabase auth user id (UUID) and is kept in sync by the
@@ -141,7 +159,7 @@ model Profile {
   avatarUrl   String? @map("avatar_url")
   bio         String?
   headline    String?
-  cohort      String?
+  promotionId String? @map("promotion_id") @db.Uuid
   githubUrl   String? @map("github_url")
   linkedinUrl String? @map("linkedin_url")
 
@@ -160,8 +178,17 @@ model Profile {
   // Cached aggregates for ranking / UI.
   tutorRatingAvg   Decimal? @map("tutor_rating_avg") @db.Decimal(3, 2)
   studentRatingAvg Decimal? @map("student_rating_avg") @db.Decimal(3, 2)
-  sessionsTaught   Int      @default(0) @map("sessions_taught")
-  sessionsAttended Int      @default(0) @map("sessions_attended")
+
+  // Career session counters — no XP penalty for cancelling; instead the whole
+  // history is kept and surfaced as a reliability %, which (with the levels)
+  // drives the cosmetic rank/badge. reliabilityScore is cached, e.g.
+  // completed / (completed + cancelled) * 100; rankTier is the resolved badge.
+  sessionsTaught    Int      @default(0) @map("sessions_taught")
+  sessionsAttended  Int      @default(0) @map("sessions_attended")
+  sessionsCompleted Int      @default(0) @map("sessions_completed")
+  sessionsCancelled Int      @default(0) @map("sessions_cancelled")
+  reliabilityScore  Decimal? @map("reliability_score") @db.Decimal(5, 2)
+  rankTier          String?  @map("rank_tier")
 
   featuredOnLanding Boolean @default(false) @map("featured_on_landing")
 
@@ -169,11 +196,14 @@ model Profile {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
+  promotion          Promotion?                @relation(fields: [promotionId], references: [id], onDelete: SetNull)
   skills             UserSkill[]
   pings              SkillPing[]
   rubrics            Rubric[]
-  sessionsAsTutor    TutoringSession[]
-  participations     SessionParticipant[]
+  sessionsAsTutor    TutoringSession[]         @relation("SessionTutor")
+  cancelledSessions  TutoringSession[]         @relation("SessionCancelledBy")
+  participations     SessionParticipant[]      @relation("SessionStudent")
+  invitationsSent    SessionParticipant[]      @relation("SessionInviter")
   reviewsGiven       Review[]                  @relation("ReviewReviewer")
   reviewsReceived    Review[]                  @relation("ReviewReviewee")
   conversations      ConversationParticipant[]
@@ -187,6 +217,7 @@ model Profile {
   skillsAuthored     Skill[]                   @relation("SkillCreatedBy")
   skillsCertified    Skill[]                   @relation("SkillCertifiedBy")
 
+  @@index([promotionId])
   @@map("profiles")
 }
 
@@ -255,6 +286,16 @@ model Skill {
   // on level changes.
   featuredUserSkillId String? @unique @map("featured_user_skill_id") @db.Uuid
 
+  // "Heat" / freshness. Each time the skill appears in a session (or a ping)
+  // its heat is boosted and lastActivityAt is bumped; a scheduled job decays
+  // heat over time. When it stays cold too long the skill goes dormant and is
+  // demoted in search / carousels. This is what keeps a certified skill from
+  // staying pinned forever after its expert leaves.
+  heatScore      Float     @default(0) @map("heat_score")
+  sessionCount   Int       @default(0) @map("session_count")
+  lastActivityAt DateTime? @map("last_activity_at")
+  isDormant      Boolean   @default(false) @map("is_dormant")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -271,6 +312,7 @@ model Skill {
   @@index([categoryId])
   @@index([createdById])
   @@index([isCertified])
+  @@index([isDormant, heatScore])
   @@map("skills")
 }
 
@@ -320,11 +362,17 @@ model SkillPing {
   createdAt   DateTime   @default(now()) @map("created_at")
   resolvedAt  DateTime?  @map("resolved_at")
 
-  requester Profile @relation(fields: [requesterId], references: [id], onDelete: Cascade)
-  skill     Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  // Explicit link to the session that satisfied this ping (one public session
+  // can resolve many pings). Null while the ping is still open.
+  resolvedBySessionId String? @map("resolved_by_session_id") @db.Uuid
+
+  requester         Profile          @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  skill             Skill            @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  resolvedBySession TutoringSession? @relation("PingResolvedBy", fields: [resolvedBySessionId], references: [id], onDelete: SetNull)
 
   @@index([skillId, status])
   @@index([requesterId])
+  @@index([resolvedBySessionId])
   @@map("skill_pings")
 }
 
@@ -381,17 +429,20 @@ model TutoringSession {
   isPublic        Boolean       @default(false) @map("is_public")
   rubricId        String?       @map("rubric_id") @db.Uuid
 
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  completedAt DateTime? @map("completed_at")
-  cancelledAt DateTime? @map("cancelled_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  completedAt   DateTime? @map("completed_at")
+  cancelledAt   DateTime? @map("cancelled_at")
+  cancelledById String?   @map("cancelled_by_id") @db.Uuid
 
-  tutor        Profile              @relation(fields: [tutorId], references: [id], onDelete: Restrict)
-  skill        Skill                @relation(fields: [skillId], references: [id], onDelete: Restrict)
-  conversation Conversation?        @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-  rubric       Rubric?              @relation(fields: [rubricId], references: [id], onDelete: SetNull)
-  participants SessionParticipant[]
-  reviews      Review[]
+  tutor         Profile              @relation("SessionTutor", fields: [tutorId], references: [id], onDelete: Restrict)
+  cancelledBy   Profile?             @relation("SessionCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
+  skill         Skill                @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  conversation  Conversation?        @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  rubric        Rubric?              @relation(fields: [rubricId], references: [id], onDelete: SetNull)
+  participants  SessionParticipant[]
+  reviews       Review[]
+  resolvedPings SkillPing[]          @relation("PingResolvedBy")
 
   @@index([tutorId, scheduledAt])
   @@index([skillId])
@@ -400,19 +451,25 @@ model TutoringSession {
 }
 
 /// One student per row; public sessions hold many — each approves individually.
+/// When the tutor invites a student from an open chat the row is created with
+/// status INVITED and `invitedById` set; a self-join leaves invitedById null.
 model SessionParticipant {
-  id        String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sessionId String              @map("session_id") @db.Uuid
-  studentId String              @map("student_id") @db.Uuid
-  status    ParticipationStatus @default(PENDING)
-  attended  Boolean             @default(false)
-  createdAt DateTime            @default(now()) @map("created_at")
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId   String              @map("session_id") @db.Uuid
+  studentId   String              @map("student_id") @db.Uuid
+  status      ParticipationStatus @default(PENDING)
+  attended    Boolean             @default(false)
+  invitedById String?             @map("invited_by_id") @db.Uuid
+  invitedAt   DateTime?           @map("invited_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
 
-  session TutoringSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student Profile         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  session   TutoringSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student   Profile         @relation("SessionStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  invitedBy Profile?        @relation("SessionInviter", fields: [invitedById], references: [id], onDelete: SetNull)
 
   @@unique([sessionId, studentId])
   @@index([studentId, status])
+  @@index([invitedById])
   @@map("session_participants")
 }
 
@@ -469,6 +526,9 @@ model NotionValidation {
 model Conversation {
   id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   type          ConversationType @default(DIRECT)
+  // Open group thread (e.g. a public-session room anyone matched on the skill
+  // can join) vs a private DM. SESSION-type conversations back a session room.
+  isPublic      Boolean          @default(false) @map("is_public")
   sessionId     String?          @unique @map("session_id") @db.Uuid
   createdAt     DateTime         @default(now()) @map("created_at")
   lastMessageAt DateTime?        @map("last_message_at")
