@@ -52,14 +52,11 @@ alter table public.profiles
   add constraint profiles_id_fkey
   foreign key (id) references auth.users (id) on delete cascade;
 
--- ------------------- Campus-only domain restriction -----------------
--- Belt-and-braces guard. The primary enforcement is at the Supabase Auth
--- layer (allowed email domains / a "before user created" auth hook).
+-- ------------------- Email domain restriction (disabled) ------------
+-- Sign-up is open to any email domain, so the campus-only CHECK constraint is
+-- intentionally NOT created (and dropped if a previous version added it).
 alter table public.profiles
   drop constraint if exists profiles_campus_email_chk;
-alter table public.profiles
-  add constraint profiles_campus_email_chk
-  check (email like '%@etu-digitalschool.paris');
 
 -- ------------------------- Helper functions -------------------------
 -- True when the current auth user participates in the given conversation.

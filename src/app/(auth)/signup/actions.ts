@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { CAMPUS_DOMAIN, isCampusEmail } from "@/lib/auth/constants";
 
 export type SignupState = {
   error?: string;
@@ -30,13 +29,6 @@ export async function signupAction(
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: "Adresse email invalide." };
-  }
-
-  // Campus-only — instant UX guard. The DB CHECK constraint is the hard guard.
-  if (!isCampusEmail(email)) {
-    return {
-      error: `Seules les adresses @${CAMPUS_DOMAIN} sont acceptées.`,
-    };
   }
 
   // Strip any trailing slash so we never build a broken `//auth/confirm` link
