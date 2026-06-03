@@ -4,7 +4,7 @@ import { jwtVerify } from "jose";
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
 
 // Public routes — always accessible whether logged in or not.
-const PUBLIC_PATHS = ["/login", "/register", "/complete-account", "/dev"];
+const PUBLIC_PATHS = ["/login", "/register", "/complete-account"];
 
 // Auth routes — redirect to /dashboard when already logged in.
 const AUTH_ONLY_PATHS = ["/login", "/register", "/complete-account"];
