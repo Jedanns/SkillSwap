@@ -42,37 +42,20 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// Next.js 16 renamed the `middleware` convention to `proxy`. This runs before
-// matched routes and handles session-based route protection.
-export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  const isPublic = PUBLIC_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(p + "/"),
-  );
-
-  const isAuthenticated = await getSessionFromRequest(request);
-
-  // Redirect logged-in users away from auth pages
-  if (isAuthenticated && AUTH_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
-
-  // API routes handle their own auth — never redirect them
-  if (pathname.startsWith("/api/")) {
-    return NextResponse.next({ request });
-  }
-
-  // Redirect unauthenticated users away from protected pages
-  if (!isAuthenticated && !isPublic && pathname !== "/") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  return NextResponse.next({ request });
+// Build a redirect while preserving the refreshed Supabase cookies.
+function redirectWithCookies(
+  request: NextRequest,
+  sessionResponse: NextResponse,
+  pathname: string,
+) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = "";
+  const redirect = NextResponse.redirect(url);
+  sessionResponse.cookies.getAll().forEach((cookie) => {
+    redirect.cookies.set(cookie);
+  });
+  return redirect;
 }
 
 export const config = {
