@@ -218,6 +218,7 @@ model Profile {
   notifications      Notification[]            @relation("NotificationRecipient")
   notificationsActed Notification[]            @relation("NotificationActor")
   activity           ActivityEvent[]
+  xpTransactions     XpTransaction[]
   skillsAuthored     Skill[]                   @relation("SkillCreatedBy")
   skillsCertified    Skill[]                   @relation("SkillCertifiedBy")
 
@@ -254,6 +255,25 @@ model ActivityEvent {
 
   @@index([profileId, createdAt])
   @@map("activity_events")
+}
+
+/// Append-only XP ledger — one row per grant, per track. The running totals
+/// live on Profile (account/tutor/student XP + level); this table is the audit
+/// trail and the idempotency key (sessionId + reason) for event-driven awards.
+model XpTransaction {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profileId String     @map("profile_id") @db.Uuid
+  track     LevelTrack
+  amount    Int
+  reason    String
+  sessionId String?    @map("session_id") @db.Uuid
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@index([sessionId])
+  @@map("xp_transactions")
 }
 
 // --------------------------- Skills catalogue -----------------------

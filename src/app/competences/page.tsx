@@ -8,7 +8,6 @@ import {
   Star,
   BookOpen,
   Award,
-  ChevronDown,
   X,
   CheckCircle2,
   Loader2,
@@ -16,7 +15,6 @@ import {
   Layers,
   Bell,
   Eye,
-  Users,
   TrendingUp,
 } from "lucide-react";
 
@@ -381,8 +379,6 @@ function AddSkillModal({
 //Skill detail modal
 
 function SkillDetailModal({ us, onClose }: { us: UserSkill; onClose: () => void }) {
-  const cfg = TIER_CONFIG[us.tier];
-  const Icon = cfg.icon;
   const caps: Record<Tier, number> = { HOLDER: 500, EXPERT: 2000, MASTER: 10000 };
   const nextXp = caps[us.tier];
   const pct = Math.min((us.xp / nextXp) * 100, 100);
@@ -482,7 +478,6 @@ function SkillDetailModal({ us, onClose }: { us: UserSkill; onClose: () => void 
 //Skill card
 
 function SkillCard({ us, onView }: { us: UserSkill; onView: () => void }) {
-  const cfg = TIER_CONFIG[us.tier];
   const caps: Record<Tier, number> = { HOLDER: 500, EXPERT: 2000, MASTER: 10000 };
   const nextXp = caps[us.tier];
 

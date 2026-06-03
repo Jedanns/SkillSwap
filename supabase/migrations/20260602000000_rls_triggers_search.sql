@@ -104,6 +104,7 @@ alter table public.level_thresholds          enable row level security;
 alter table public.activity_events           enable row level security;
 alter table public.skill_categories          enable row level security;
 alter table public.skills                     enable row level security;
+alter table public.skill_notions              enable row level security;
 alter table public.user_skills                enable row level security;
 alter table public.skill_pings                enable row level security;
 alter table public.rubrics                    enable row level security;
@@ -119,6 +120,7 @@ alter table public.posts                      enable row level security;
 alter table public.post_likes                 enable row level security;
 alter table public.comments                   enable row level security;
 alter table public.notifications              enable row level security;
+alter table public.xp_transactions            enable row level security;
 
 -- ============================== Policies ============================
 -- Convention: any authenticated campus user may read shared catalogue/social
@@ -142,6 +144,10 @@ create policy "level_thresholds_select" on public.level_thresholds
 create policy "activity_events_select_own" on public.activity_events
   for select to authenticated using (profile_id = (select auth.uid()));
 
+-- xp_transactions (own ledger; rows are written server-side) ----------
+create policy "xp_transactions_select_own" on public.xp_transactions
+  for select to authenticated using (profile_id = (select auth.uid()));
+
 -- skill_categories (shared catalogue) --------------------------------
 create policy "skill_categories_select" on public.skill_categories
   for select to authenticated using (true);
@@ -153,6 +159,14 @@ create policy "skills_insert" on public.skills
   for insert to authenticated with check (created_by_id = (select auth.uid()));
 create policy "skills_update_author" on public.skills
   for update to authenticated using (created_by_id = (select auth.uid()));
+
+-- skill_notions (shared syllabus; the owning skill's author manages) --
+create policy "skill_notions_select" on public.skill_notions
+  for select to authenticated using (true);
+create policy "skill_notions_write_skill_author" on public.skill_notions
+  for all to authenticated
+  using (exists (select 1 from public.skills s where s.id = skill_id and s.created_by_id = (select auth.uid())))
+  with check (exists (select 1 from public.skills s where s.id = skill_id and s.created_by_id = (select auth.uid())));
 
 -- user_skills (own attribution rows) ---------------------------------
 create policy "user_skills_select" on public.user_skills

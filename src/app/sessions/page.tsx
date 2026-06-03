@@ -243,8 +243,6 @@ function SessionModal({ session, onClose }: { session: SessionDetail; onClose: (
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  const bandColor = session.kind === "EVALUATION" ? "bg-peach" : session.status === "IN_PROGRESS" ? "bg-pistache" : session.status === "AWAITING_FEEDBACK" ? "bg-peach/60" : session.status === "COMPLETED" ? "bg-zinc-200" : "bg-powder";
-
   return (
     <div ref={overlayRef} className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 p-4 backdrop-blur-sm sm:items-center animate-in fade-in duration-200" onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}>
       <div className="animate-in fade-in slide-in-from-bottom-6 sm:zoom-in-95 duration-300 relative w-6/12 overflow-hidden rounded-3xl bg-surface shadow-2xl">
