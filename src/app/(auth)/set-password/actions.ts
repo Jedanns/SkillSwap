@@ -54,18 +54,16 @@ export async function setPasswordAction(
       `[set-password] updateUser failed: status=${error.status} code=${error.code} message=${error.message}`,
     );
 
-    // Supabase rejects compromised or policy-violating passwords even when our
-    // own client-side rules pass (e.g. leaked-password protection, required
-    // symbol). Tell the user to pick a stronger/different one.
-    if (error.code === "weak_password" || error.status === 422) {
+    if (error.code === "weak_password") {
       return {
         error:
           "Ce mot de passe est trop courant ou non conforme. Choisissez-en un autre, plus robuste.",
       };
     }
 
+    // TEMP DEBUG: surface the real Supabase reason in the UI so we can diagnose.
     return {
-      error: "Impossible de définir le mot de passe. Réessayez.",
+      error: `[debug] ${error.status} ${error.code}: ${error.message}`,
     };
   }
 
