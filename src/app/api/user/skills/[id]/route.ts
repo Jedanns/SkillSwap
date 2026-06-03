@@ -12,14 +12,14 @@ export async function DELETE(
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 
   const { id } = await params;
   const result = await removeUserSkill(user.id, id);
 
   if (!result) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Compétence introuvable." }, { status: 404 });
   }
 
   return new NextResponse(null, { status: 204 });

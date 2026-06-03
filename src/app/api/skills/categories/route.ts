@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
 import { createCategory, listCategories } from "@/lib/skills/service";
 
 export async function GET() {
@@ -8,8 +8,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSessionFromRequest(req);
-  if (!session) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 

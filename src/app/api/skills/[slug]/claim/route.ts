@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
 import { getSkillBySlug, claimSkill } from "@/lib/skills/service";
 
 export async function POST(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
-  const session = await getSessionFromRequest(req);
-  if (!session) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 
@@ -18,7 +21,7 @@ export async function POST(
   }
 
   try {
-    const userSkill = await claimSkill(session.profileId, skill.id);
+    const userSkill = await claimSkill(user.id, skill.id);
     return NextResponse.json(userSkill, { status: 201 });
   } catch (err: unknown) {
     if (err instanceof Error) {

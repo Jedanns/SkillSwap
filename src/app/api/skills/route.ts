@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
 import { createSkill, searchSkills } from "@/lib/skills/service";
 
 export async function GET(req: NextRequest) {
@@ -12,8 +12,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSessionFromRequest(req);
-  if (!session) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
     return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 
@@ -35,7 +38,7 @@ export async function POST(req: NextRequest) {
       name,
       description: typeof body?.description === "string" ? body.description : undefined,
       categoryId: typeof body?.categoryId === "string" ? body.categoryId : undefined,
-      createdById: session.profileId,
+      createdById: user.id,
       notions,
     });
     return NextResponse.json(skill, { status: 201 });
