@@ -1,183 +1,543 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Prisma 7 uses the `prisma-client` generator. The client is emitted to the
-// `output` path below and imported from there (see src/lib/prisma.ts).
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
 }
 
-// The connection URL is configured in prisma.config.ts (for the CLI) and via
-// the driver adapter at runtime (see src/lib/prisma.ts), so it is intentionally
-// omitted here in Prisma 7.
 datasource db {
   provider = "postgresql"
 }
-
-// ==================== ENUMS ====================
-
-enum SessionStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-enum XpType {
-  ACCOUNT
-  TUTOR
-  STUDENT
-}
-
-// ==================== PROFILE ====================
 
 /// Application profile, mirrored 1:1 from Supabase `auth.users`.
 /// `id` should equal the Supabase auth user id (UUID). Keep it in sync from
 /// your auth flow — e.g. a Postgres trigger on `auth.users`, or an upsert
 /// right after sign-up.
 model Profile {
-  id        String   @id @db.Uuid
-  email     String   @unique
-  username  String?  @unique
-  fullName  String?  @map("full_name")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                                                                String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                                                             String                      @unique
+  username                                                          String?                     @unique
+  first_name                                                        String?
+  last_name                                                         String?
+  display_name                                                      String?
+  avatar_url                                                        String?
+  bio                                                               String?
+  headline                                                          String?
+  promotion_id                                                      String?                     @db.Uuid
+  github_url                                                        String?
+  linkedin_url                                                      String?
+  is_profile_complete                                               Boolean                     @default(false)
+  onboarded_at                                                      DateTime?
+  account_level                                                     Int                         @default(1)
+  account_xp                                                        Int                         @default(0)
+  tutor_level                                                       Int                         @default(1)
+  tutor_xp                                                          Int                         @default(0)
+  student_level                                                     Int                         @default(1)
+  student_xp                                                        Int                         @default(0)
+  tutor_rating_avg                                                  Decimal?                    @db.Decimal(3, 2)
+  student_rating_avg                                                Decimal?                    @db.Decimal(3, 2)
+  sessions_taught                                                   Int                         @default(0)
+  sessions_attended                                                 Int                         @default(0)
+  sessions_completed                                                Int                         @default(0)
+  sessions_cancelled                                                Int                         @default(0)
+  reliability_score                                                 Decimal?                    @db.Decimal(5, 2)
+  rank_tier                                                         String?
+  featured_on_landing                                               Boolean                     @default(false)
+  createdAt                                                         DateTime                    @default(now()) @map("created_at")
+  updatedAt                                                         DateTime                    @updatedAt @map("updated_at")
+  account_status                                                    AccountStatus               @default(PENDING)
+  password_hash                                                     String?
+  verification_token                                                String?                     @unique
+  verification_token_expires_at                                     DateTime?
+  activity_events                                                   activity_events[]
+  comments                                                          comments[]
+  conversation_participants                                         conversation_participants[]
+  messages                                                          messages[]
+  notifications_notifications_actor_idToprofiles                    notifications[]             @relation("notifications_actor_idToprofiles")
+  notifications_notifications_recipient_idToprofiles                notifications[]             @relation("notifications_recipient_idToprofiles")
+  post_likes                                                        PostLike[]
+  posts                                                             Post[]
+  promotions                                                        promotions?                 @relation(fields: [promotion_id], references: [id])
+  reviews_reviews_reviewee_idToprofiles                             reviews[]                   @relation("reviews_reviewee_idToprofiles")
+  reviews_reviews_reviewer_idToprofiles                             reviews[]                   @relation("reviews_reviewer_idToprofiles")
+  rubrics                                                           rubrics[]
+  session_participants_session_participants_invited_by_idToprofiles session_participants[]      @relation("session_participants_invited_by_idToprofiles")
+  session_participants_session_participants_student_idToprofiles    session_participants[]      @relation("session_participants_student_idToprofiles")
+  skill_pings                                                       skill_pings[]
+  skills_skills_certified_by_idToprofiles                           skills[]                    @relation("skills_certified_by_idToprofiles")
+  skills_skills_created_by_idToprofiles                             skills[]                    @relation("skills_created_by_idToprofiles")
+  tutoring_sessions_tutoring_sessions_cancelled_by_idToprofiles     TutoringSession[]           @relation("tutoring_sessions_cancelled_by_idToprofiles")
+  tutoredSessions                                                   TutoringSession[]           @relation("TutoredBy")
+  user_skills                                                       user_skills[]
 
-  accountProgression  AccountProgression?
-  tutorProgression    TutorProgression?
-  studentProgression  StudentProgression?
-  tutoredSessions     TutoringSession[]   @relation("TutoredBy")
-  learnedSessions     TutoringSession[]   @relation("LearnedBy")
-  givenEvaluations    SessionEvaluation[] @relation("GaveEvaluation")
-  receivedEvaluations SessionEvaluation[] @relation("ReceivedEvaluation")
-  xpTransactions      XpTransaction[]
-  userBadges          UserBadge[]
-
+  @@index([promotion_id])
   @@map("profiles")
 }
 
-// ==================== PROGRESSION ====================
-
-model AccountProgression {
-  id        String   @id @default(cuid())
-  userId    String   @unique @map("user_id") @db.Uuid
-  totalXp   Int      @default(0) @map("total_xp")
-  level     Int      @default(1)
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  profile Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("account_progression")
-}
-
-model TutorProgression {
-  id             String   @id @default(cuid())
-  userId         String   @unique @map("user_id") @db.Uuid
-  totalXp        Int      @default(0) @map("total_xp")
-  level          Int      @default(1)
-  sessionsTaught Int      @default(0) @map("sessions_taught")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  profile Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("tutor_progression")
-}
-
-model StudentProgression {
-  id               String   @id @default(cuid())
-  userId           String   @unique @map("user_id") @db.Uuid
-  totalXp          Int      @default(0) @map("total_xp")
-  level            Int      @default(1)
-  sessionsAttended Int      @default(0) @map("sessions_attended")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-
-  profile Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("student_progression")
-}
-
-// ==================== XP AUDIT LOG ====================
-
-model XpTransaction {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id") @db.Uuid
-  xpType    XpType   @map("xp_type")
-  amount    Int
-  reason    String
-  sessionId String?  @map("session_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  profile Profile          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session TutoringSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-
-  @@map("xp_transactions")
-}
-
-// ==================== SESSIONS ====================
-
 model TutoringSession {
-  id          String        @id @default(cuid())
-  tutorId     String        @map("tutor_id") @db.Uuid
-  studentId   String        @map("student_id") @db.Uuid
-  topic       String?
-  status      SessionStatus @default(PENDING)
-  scheduledAt DateTime?     @map("scheduled_at")
-  startedAt   DateTime?     @map("started_at")
-  completedAt DateTime?     @map("completed_at")
-  createdAt   DateTime      @default(now()) @map("created_at")
-  updatedAt   DateTime      @updatedAt @map("updated_at")
+  id                                                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tutorId                                              String                 @map("tutor_id") @db.Uuid
+  skill_id                                             String                 @db.Uuid
+  conversation_id                                      String?                @db.Uuid
+  kind                                                 SessionKind            @default(TUTORING)
+  title                                                String
+  description                                          String?
+  scheduledAt                                          DateTime               @map("scheduled_at")
+  duration_minutes                                     Int
+  status                                               SessionStatus          @default(PROPOSED)
+  is_public                                            Boolean                @default(false)
+  rubric_id                                            String?                @db.Uuid
+  createdAt                                            DateTime               @default(now()) @map("created_at")
+  updatedAt                                            DateTime               @updatedAt @map("updated_at")
+  completedAt                                          DateTime?              @map("completed_at")
+  cancelled_at                                         DateTime?
+  cancelled_by_id                                      String?                @db.Uuid
+  reviews                                              reviews[]
+  session_participants                                 session_participants[]
+  skill_pings                                          skill_pings[]
+  profiles_tutoring_sessions_cancelled_by_idToprofiles Profile?               @relation("tutoring_sessions_cancelled_by_idToprofiles", fields: [cancelled_by_id], references: [id])
+  conversations                                        conversations?         @relation(fields: [conversation_id], references: [id])
+  rubrics                                              rubrics?               @relation(fields: [rubric_id], references: [id])
+  skills                                               skills                 @relation(fields: [skill_id], references: [id])
+  tutor                                                Profile                @relation("TutoredBy", fields: [tutorId], references: [id])
 
-  tutor          Profile             @relation("TutoredBy", fields: [tutorId], references: [id], onDelete: Restrict)
-  student        Profile             @relation("LearnedBy", fields: [studentId], references: [id], onDelete: Restrict)
-  evaluations    SessionEvaluation[]
-  xpTransactions XpTransaction[]
-
+  @@index([skill_id])
+  @@index([status, scheduledAt])
+  @@index([tutorId, scheduledAt])
   @@map("tutoring_sessions")
 }
 
-// ==================== EVALUATIONS ====================
+model Post {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authorId      String     @map("author_id") @db.Uuid
+  kind          PostKind   @default(GENERAL)
+  content       String
+  skill_id      String?    @db.Uuid
+  like_count    Int        @default(0)
+  comment_count Int        @default(0)
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  comments      comments[]
+  likes         PostLike[]
+  author        Profile    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  skills        skills?    @relation(fields: [skill_id], references: [id])
 
-model SessionEvaluation {
-  id          String   @id @default(cuid())
-  sessionId   String   @map("session_id")
-  evaluatorId String   @map("evaluator_id") @db.Uuid
-  evaluateeId String   @map("evaluatee_id") @db.Uuid
-  rating      Int
-  comment     String?
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  session   TutoringSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  evaluator Profile         @relation("GaveEvaluation", fields: [evaluatorId], references: [id], onDelete: Restrict)
-  evaluatee Profile         @relation("ReceivedEvaluation", fields: [evaluateeId], references: [id], onDelete: Restrict)
-
-  @@unique([sessionId, evaluatorId])
-  @@map("session_evaluations")
+  @@index([authorId, createdAt])
+  @@index([skill_id])
+  @@map("posts")
 }
 
-// ==================== BADGES ====================
+model PostLike {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId     String   @map("post_id") @db.Uuid
+  profile_id String   @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  profiles   Profile  @relation(fields: [profile_id], references: [id], onDelete: Cascade)
 
-model Badge {
-  id          String   @id @default(cuid())
+  @@unique([postId, profile_id])
+  @@index([profile_id])
+  @@map("post_likes")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model activity_events {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profile_id String       @db.Uuid
+  type       ActivityType
+  xp_awarded Int          @default(0)
+  metadata   Json?
+  created_at DateTime     @default(now())
+  profiles   Profile      @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+
+  @@index([profile_id, created_at])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model comments {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  post_id    String   @db.Uuid
+  author_id  String   @db.Uuid
+  body       String
+  created_at DateTime @default(now())
+  profiles   Profile  @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  posts      Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
+
+  @@index([post_id, created_at])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model conversation_participants {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String        @db.Uuid
+  profile_id      String        @db.Uuid
+  last_read_at    DateTime?
+  created_at      DateTime      @default(now())
+  conversations   conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  profiles        Profile       @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+
+  @@unique([conversation_id, profile_id])
+  @@index([profile_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model conversations {
+  id                        String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type                      ConversationType            @default(DIRECT)
+  is_public                 Boolean                     @default(false)
+  session_id                String?                     @unique @db.Uuid
+  created_at                DateTime                    @default(now())
+  last_message_at           DateTime?
+  conversation_participants conversation_participants[]
+  messages                  messages[]
+  tutoring_sessions         TutoringSession[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model level_thresholds {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  track      LevelTrack
+  level      Int
+  min_xp     Int
+  tier_label String?
+  created_at DateTime   @default(now())
+  updated_at DateTime
+
+  @@unique([track, level])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model messages {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String        @db.Uuid
+  sender_id       String        @db.Uuid
+  body            String
+  created_at      DateTime      @default(now())
+  conversations   conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  profiles        Profile       @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+
+  @@index([conversation_id, created_at])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model notifications {
+  id                                            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipient_id                                  String           @db.Uuid
+  type                                          NotificationType
+  actor_id                                      String?          @db.Uuid
+  entity_type                                   String?
+  entity_id                                     String?          @db.Uuid
+  data                                          Json?
+  is_read                                       Boolean          @default(false)
+  created_at                                    DateTime         @default(now())
+  profiles_notifications_actor_idToprofiles     Profile?         @relation("notifications_actor_idToprofiles", fields: [actor_id], references: [id])
+  profiles_notifications_recipient_idToprofiles Profile          @relation("notifications_recipient_idToprofiles", fields: [recipient_id], references: [id], onDelete: Cascade)
+
+  @@index([recipient_id, is_read, created_at])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model notion_validations {
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  review_id           String           @db.Uuid
+  rubric_criterion_id String?          @db.Uuid
+  label               String?
+  acquired            Boolean          @default(false)
+  reviews             reviews          @relation(fields: [review_id], references: [id], onDelete: Cascade)
+  rubric_criteria     rubric_criteria? @relation(fields: [rubric_criterion_id], references: [id])
+
+  @@index([review_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model promotions {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String    @unique
+  slug       String    @unique
+  start_year Int?
+  created_at DateTime  @default(now())
+  profiles   Profile[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model reviews {
+  id                                     String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id                             String               @db.Uuid
+  reviewer_id                            String               @db.Uuid
+  reviewee_id                            String               @db.Uuid
+  direction                              ReviewDirection
+  rating                                 Int
+  comment                                String?
+  score                                  Int?
+  passed                                 Boolean?
+  rubric_id                              String?              @db.Uuid
+  created_at                             DateTime             @default(now())
+  notion_validations                     notion_validations[]
+  profiles_reviews_reviewee_idToprofiles Profile              @relation("reviews_reviewee_idToprofiles", fields: [reviewee_id], references: [id], onDelete: Cascade)
+  profiles_reviews_reviewer_idToprofiles Profile              @relation("reviews_reviewer_idToprofiles", fields: [reviewer_id], references: [id], onDelete: Cascade)
+  rubrics                                rubrics?             @relation(fields: [rubric_id], references: [id])
+  tutoring_sessions                      TutoringSession      @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@unique([session_id, reviewer_id, reviewee_id])
+  @@index([reviewee_id])
+  @@index([session_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model rubric_criteria {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rubric_id          String               @db.Uuid
+  label              String
+  position           Int                  @default(0)
+  notion_validations notion_validations[]
+  rubrics            rubrics              @relation(fields: [rubric_id], references: [id], onDelete: Cascade)
+
+  @@index([rubric_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model rubrics {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  skill_id          String            @db.Uuid
+  expert_id         String            @db.Uuid
+  scale             ScoringScale      @default(OUT_OF_20)
+  passing_score     Int
+  created_at        DateTime          @default(now())
+  updated_at        DateTime
+  reviews           reviews[]
+  rubric_criteria   rubric_criteria[]
+  profiles          Profile           @relation(fields: [expert_id], references: [id], onDelete: Cascade)
+  skills            skills            @relation(fields: [skill_id], references: [id], onDelete: Cascade)
+  tutoring_sessions TutoringSession[]
+
+  @@unique([skill_id, expert_id])
+  @@index([skill_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model session_participants {
+  id                                                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  session_id                                            String              @db.Uuid
+  student_id                                            String              @db.Uuid
+  status                                                ParticipationStatus @default(PENDING)
+  attended                                              Boolean             @default(false)
+  invited_by_id                                         String?             @db.Uuid
+  invited_at                                            DateTime?
+  created_at                                            DateTime            @default(now())
+  profiles_session_participants_invited_by_idToprofiles Profile?            @relation("session_participants_invited_by_idToprofiles", fields: [invited_by_id], references: [id])
+  tutoring_sessions                                     TutoringSession     @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  profiles_session_participants_student_idToprofiles    Profile             @relation("session_participants_student_idToprofiles", fields: [student_id], references: [id], onDelete: Cascade)
+
+  @@unique([session_id, student_id])
+  @@index([invited_by_id])
+  @@index([student_id, status])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model skill_categories {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name        String   @unique
-  description String
-  xpReward    Int      @default(0) @map("xp_reward")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  userBadges UserBadge[]
-
-  @@map("badges")
+  slug        String   @unique
+  description String?
+  created_at  DateTime @default(now())
+  skills      skills[]
 }
 
-model UserBadge {
-  id       String   @id @default(cuid())
-  userId   String   @map("user_id") @db.Uuid
-  badgeId  String   @map("badge_id")
-  earnedAt DateTime @default(now()) @map("earned_at")
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model skill_notions {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  skill_id    String   @db.Uuid
+  title       String
+  description String?
+  position    Int      @default(0)
+  created_at  DateTime @default(now())
+  skills      skills   @relation(fields: [skill_id], references: [id], onDelete: Cascade)
 
-  profile Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badge   Badge   @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  @@index([skill_id])
+}
 
-  @@unique([userId, badgeId])
-  @@map("user_badges")
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model skill_pings {
+  id                     String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requester_id           String           @db.Uuid
+  skill_id               String           @db.Uuid
+  message                String?
+  status                 PingStatus       @default(OPEN)
+  created_at             DateTime         @default(now())
+  resolved_at            DateTime?
+  resolved_by_session_id String?          @db.Uuid
+  profiles               Profile          @relation(fields: [requester_id], references: [id], onDelete: Cascade)
+  tutoring_sessions      TutoringSession? @relation(fields: [resolved_by_session_id], references: [id])
+  skills                 skills           @relation(fields: [skill_id], references: [id], onDelete: Cascade)
+
+  @@index([requester_id])
+  @@index([resolved_by_session_id])
+  @@index([skill_id, status])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model skills {
+  id                                                     String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                                                   String
+  slug                                                   String            @unique
+  canonical_description                                  String?
+  category_id                                            String?           @db.Uuid
+  created_by_id                                          String            @db.Uuid
+  is_certified                                           Boolean           @default(false)
+  certified_at                                           DateTime?
+  certified_by_id                                        String?           @db.Uuid
+  featured_user_skill_id                                 String?           @unique @db.Uuid
+  heat_score                                             Float             @default(0)
+  session_count                                          Int               @default(0)
+  last_activity_at                                       DateTime?
+  is_dormant                                             Boolean           @default(false)
+  created_at                                             DateTime          @default(now())
+  updated_at                                             DateTime
+  posts                                                  Post[]
+  rubrics                                                rubrics[]
+  skill_notions                                          skill_notions[]
+  skill_pings                                            skill_pings[]
+  skill_categories                                       skill_categories? @relation(fields: [category_id], references: [id])
+  profiles_skills_certified_by_idToprofiles              Profile?          @relation("skills_certified_by_idToprofiles", fields: [certified_by_id], references: [id])
+  profiles_skills_created_by_idToprofiles                Profile           @relation("skills_created_by_idToprofiles", fields: [created_by_id], references: [id])
+  user_skills_skills_featured_user_skill_idTouser_skills user_skills?      @relation("skills_featured_user_skill_idTouser_skills", fields: [featured_user_skill_id], references: [id])
+  tutoring_sessions                                      TutoringSession[]
+  user_skills_user_skills_skill_idToskills               user_skills[]     @relation("user_skills_skill_idToskills")
+
+  @@index([category_id])
+  @@index([created_by_id])
+  @@index([is_certified])
+  @@index([is_dormant, heat_score])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model user_skills {
+  id                                                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profile_id                                        String            @db.Uuid
+  skill_id                                          String            @db.Uuid
+  level                                             Int               @default(1)
+  xp                                                Int               @default(0)
+  tier                                              SkillTier         @default(HOLDER)
+  can_teach                                         Boolean           @default(false)
+  status                                            SkillStatus       @default(ACTIVE)
+  source                                            AcquisitionSource @default(SELF_ATTRIBUTED)
+  acquired_at                                       DateTime          @default(now())
+  custom_title                                      String?
+  custom_description                                String?
+  custom_image_url                                  String?
+  created_at                                        DateTime          @default(now())
+  updated_at                                        DateTime
+  skills_skills_featured_user_skill_idTouser_skills skills?           @relation("skills_featured_user_skill_idTouser_skills")
+  profiles                                          Profile           @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+  skills_user_skills_skill_idToskills               skills            @relation("user_skills_skill_idToskills", fields: [skill_id], references: [id], onDelete: Cascade)
+
+  @@unique([profile_id, skill_id])
+  @@index([profile_id])
+  @@index([skill_id, level])
+}
+
+enum SessionStatus {
+  PROPOSED
+  CONFIRMED
+  IN_PROGRESS
+  AWAITING_FEEDBACK
+  COMPLETED
+  CANCELLED
+}
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+}
+
+enum AcquisitionSource {
+  SELF_ATTRIBUTED
+  EVALUATION
+}
+
+enum ActivityType {
+  POST_CREATED
+  COMMENT_CREATED
+  MESSAGE_SENT
+  SESSION_TAUGHT
+  SESSION_ATTENDED
+  SKILL_ATTRIBUTED
+  FEEDBACK_GIVEN
+  PING_CREATED
+  LIKE_GIVEN
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+  SESSION
+}
+
+enum LevelTrack {
+  ACCOUNT
+  TUTOR
+  STUDENT
+  SKILL
+}
+
+enum NotificationType {
+  PING_RECEIVED
+  MESSAGE_RECEIVED
+  SESSION_PROPOSED
+  SESSION_INVITED
+  SESSION_APPROVED
+  SESSION_DECLINED
+  SESSION_CANCELLED
+  SESSION_COMPLETED
+  FEEDBACK_REQUEST
+  EVALUATION_RESULT
+  POST_LIKED
+  POST_COMMENTED
+  SKILL_CERTIFIED
+  LEVEL_UP
+}
+
+enum ParticipationStatus {
+  INVITED
+  PENDING
+  APPROVED
+  DECLINED
+  CANCELLED
+}
+
+enum PingStatus {
+  OPEN
+  MATCHED
+  RESOLVED
+  CANCELLED
+}
+
+enum PostKind {
+  GENERAL
+  TUTORING_OFFER
+  ANNOUNCEMENT
+}
+
+enum ReviewDirection {
+  STUDENT_TO_TUTOR
+  TUTOR_TO_STUDENT
+}
+
+enum ScoringScale {
+  OUT_OF_10
+  OUT_OF_20
+}
+
+enum SessionKind {
+  TUTORING
+  EVALUATION
+}
+
+enum SkillStatus {
+  ACTIVE
+  PENDING_EVALUATION
+}
+
+enum SkillTier {
+  HOLDER
+  EXPERT
+  MASTER
 }
