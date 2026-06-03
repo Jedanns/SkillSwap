@@ -49,6 +49,21 @@ export async function setPasswordAction(
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {
+    // Surface the real cause in the server logs (Vercel/host) for debugging.
+    console.error(
+      `[set-password] updateUser failed: status=${error.status} code=${error.code} message=${error.message}`,
+    );
+
+    // Supabase rejects compromised or policy-violating passwords even when our
+    // own client-side rules pass (e.g. leaked-password protection, required
+    // symbol). Tell the user to pick a stronger/different one.
+    if (error.code === "weak_password" || error.status === 422) {
+      return {
+        error:
+          "Ce mot de passe est trop courant ou non conforme. Choisissez-en un autre, plus robuste.",
+      };
+    }
+
     return {
       error: "Impossible de définir le mot de passe. Réessayez.",
     };
