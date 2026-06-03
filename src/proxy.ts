@@ -1,51 +1,61 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import { updateSession } from "@/lib/supabase/middleware";
 
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET!);
+// Public routes — reachable whether or not the user is signed in.
+// `/auth` must stay public so the email-confirmation handler can run.
+const PUBLIC_EXACT = ["/"];
+const PUBLIC_PREFIXES = ["/login", "/signup", "/auth"];
 
-// Public routes — always accessible whether logged in or not.
-const PUBLIC_PATHS = ["/login", "/register", "/complete-account"];
+// Signed-in users get bounced away from these (GET only — see below).
+const AUTH_ENTRY_PATHS = ["/login", "/signup"];
 
-// Auth routes — redirect to /dashboard when already logged in.
-const AUTH_ONLY_PATHS = ["/login", "/register", "/complete-account"];
+// Next.js 16 renamed the `middleware` convention to `proxy`. This refreshes the
+// Supabase session on every matched request and performs OPTIMISTIC redirects.
+// Authoritative authorization lives in the (app) layout (getUser) and the
+// server actions — never trust these claims for real authz decisions.
+export async function proxy(request: NextRequest) {
+  // Always refresh the session first so the auth cookies stay in sync.
+  const { response, claims } = await updateSession(request);
 
-async function getSessionFromRequest(request: NextRequest): Promise<boolean> {
-  const token = request.cookies.get("session")?.value;
-  if (!token) return false;
-  try {
-    await jwtVerify(token, SECRET);
-    return true;
-  } catch {
-    return false;
+  const { pathname } = request.nextUrl;
+  const isAuthenticated = !!claims;
+
+  const isPublic =
+    PUBLIC_EXACT.includes(pathname) ||
+    PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+
+  // Unauthenticated user on a protected route → login.
+  if (!isAuthenticated && !isPublic) {
+    return redirectWithCookies(request, response, "/login");
   }
+
+  // Authenticated user landing on login/signup → home. GET only, so Server
+  // Action POSTs to these routes (form submissions) are never hijacked.
+  if (
+    isAuthenticated &&
+    request.method === "GET" &&
+    AUTH_ENTRY_PATHS.includes(pathname)
+  ) {
+    return redirectWithCookies(request, response, "/home");
+  }
+
+  return response;
 }
 
-// Next.js 16 renamed the `middleware` convention to `proxy`. This runs before
-// matched routes and handles session-based route protection.
-export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  const isPublic = PUBLIC_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(p + "/"),
-  );
-
-  const isAuthenticated = await getSessionFromRequest(request);
-
-  // Redirect logged-in users away from auth pages
-  if (isAuthenticated && AUTH_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
-  }
-
-  // Redirect unauthenticated users away from protected pages
-  if (!isAuthenticated && !isPublic && pathname !== "/") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  return NextResponse.next({ request });
+// Build a redirect while preserving the refreshed Supabase cookies.
+function redirectWithCookies(
+  request: NextRequest,
+  sessionResponse: NextResponse,
+  pathname: string,
+) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = "";
+  const redirect = NextResponse.redirect(url);
+  sessionResponse.cookies.getAll().forEach((cookie) => {
+    redirect.cookies.set(cookie);
+  });
+  return redirect;
 }
 
 export const config = {
@@ -56,7 +66,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon)
      * - common image file extensions
-     * Adjust this so your auth callback routes stay reachable.
+     * NOTE: /auth/* is intentionally NOT excluded so the email-confirmation
+     * route handler stays reachable.
      */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
