@@ -46,15 +46,15 @@ export function FeatureRow({
 
   return (
     <div className="grid items-center gap-8 md:grid-cols-2 md:gap-16">
-      {/* Text block */}
-      <Reveal className={cn("order-2", textRight ? "md:order-2" : "md:order-1")}>
+      {/* Text block — first on mobile for reading flow, alternates on desktop */}
+      <Reveal className={cn("order-1", textRight ? "md:order-2" : "md:order-1")}>
         <span className="inline-flex items-center gap-2 font-mono text-xs font-medium uppercase tracking-[0.16em] text-muted-ink">
           <span aria-hidden className="text-peach">
             ✳
           </span>
           {eyebrow}
         </span>
-        <h3 className="mt-4 max-w-md font-heading text-[clamp(1.6rem,3.5vw,2.5rem)] font-extrabold leading-[1.05] tracking-[-0.03em] text-ink">
+        <h3 className="mt-4 max-w-md text-balance font-heading text-[clamp(1.6rem,3.5vw,2.5rem)] font-extrabold leading-[1.05] tracking-[-0.03em] text-ink">
           {title}
         </h3>
         <p className="mt-4 max-w-md text-base leading-relaxed text-muted-ink sm:text-lg">
@@ -66,7 +66,7 @@ export function FeatureRow({
          Falls back to a pastel icon panel when no image is provided. */}
       <Reveal
         delay={80}
-        className={cn("order-1", textRight ? "md:order-1" : "md:order-2")}
+        className={cn("order-2", textRight ? "md:order-1" : "md:order-2")}
       >
         <div
           className={cn(

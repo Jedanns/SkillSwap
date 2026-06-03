@@ -1,0 +1,109 @@
+/* ---------------------------------------------------------------------------
+   DemoPortal — bespoke, component-scoped animations.
+
+   The project keeps shared motion in globals.css; these keyframes are specific
+   to the demo easter-egg, so they live here as a CSS module. Decorative motion
+   is disabled under prefers-reduced-motion, mirroring globals.css.
+--------------------------------------------------------------------------- */
+
+/* Chaos button — WebGL noise canvas inside a gradient-rimmed pill.
+   Ported from the original (vjy/jh3yy) to our stack: no GSAP/tweakpane. */
+.chaosButton {
+  position: relative;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  width: 240px;
+  height: 60px;
+  max-width: 80vw;
+  border-radius: 150px;
+  overflow: hidden;
+  background: linear-gradient(#eee, #555);
+  transition: transform 0.2s ease;
+}
+
+.chaosButton:hover {
+  transform: scale(1.02);
+}
+
+.chaosButton:active {
+  transform: scale(0.98);
+}
+
+.chaosCanvas {
+  position: absolute;
+  inset: 2px;
+  display: block;
+  height: calc(100% - 4px);
+  width: calc(100% - 4px);
+  border-radius: inherit;
+}
+
+.chaosButton:active .chaosLabel {
+  mix-blend-mode: difference;
+}
+
+.chaosLabel {
+  position: relative;
+  z-index: 1;
+  display: block;
+  color: white;
+  font-size: clamp(16px, 2vw, 20px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* Scroll-indicator arrow: bounces up and down continuously. */
+.bounceArrow {
+  animation: bounceArrow 1.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes bounceArrow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+
+/* Staggered fade-in for intro elements (delay set inline per element). */
+.fadeUp {
+  opacity: 0;
+  animation: fadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: opacity, transform;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Subtle noise texture overlay for the dark portal. */
+.noise {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.03;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chaosButton {
+    transition: none;
+  }
+  .bounceArrow {
+    animation: none;
+  }
+  .fadeUp {
+    opacity: 1;
+    animation: none;
+  }
+}

@@ -1,14 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
-import { registerAction, type RegisterState } from "./actions";
+import { signupAction, type SignupState } from "./actions";
 import Link from "next/link";
 
-const initialState: RegisterState = {};
+const initialState: SignupState = {};
 
-export default function RegisterPage() {
+export default function SignupPage() {
   const [state, formAction, isPending] = useActionState(
-    registerAction,
+    signupAction,
     initialState,
   );
 
@@ -21,8 +21,16 @@ export default function RegisterPage() {
           </svg>
         </div>
         <h1 className="text-xl font-semibold text-zinc-900 mb-2">Email envoyé !</h1>
-        <p className="text-zinc-500 text-sm">
-          Un email de finalisation de compte vous a été envoyé.
+        <p className="text-zinc-500 text-sm mb-4">
+          Cliquez sur le lien reçu dans votre boîte mail étudiante pour définir
+          votre mot de passe et finaliser votre compte.
+        </p>
+        <p className="text-zinc-400 text-xs">
+          Vous n&apos;avez rien reçu ? Vérifiez vos spams, ou{" "}
+          <Link href="/signup" className="text-zinc-700 font-medium hover:underline">
+            renvoyez le lien
+          </Link>
+          .
         </p>
       </div>
     );
@@ -32,7 +40,7 @@ export default function RegisterPage() {
     <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 p-8">
       <h1 className="text-2xl font-bold text-zinc-900 mb-1">Créer un compte</h1>
       <p className="text-zinc-500 text-sm mb-6">
-        Entrez votre adresse email institutionnelle.
+        Entrez votre adresse email étudiante pour commencer.
       </p>
 
       <form action={formAction} className="space-y-4">

@@ -1,8 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { verifyPassword } from "@/lib/auth/password";
-import { createSession } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export type LoginState = {
@@ -20,41 +18,13 @@ export async function loginAction(
     return { error: "Email et mot de passe requis." };
   }
 
-  const profile = await prisma.profile.findUnique({
-    where: { email },
-    select: {
-      id: true,
-      email: true,
-      passwordHash: true,
-      accountStatus: true,
-    },
-  });
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-  // Use a generic message to avoid user enumeration
-  const invalidMsg = "Email ou mot de passe incorrect.";
-
-  if (!profile || !profile.passwordHash) {
-    return { error: invalidMsg };
+  if (error) {
+    // Generic message — avoids leaking whether the account exists.
+    return { error: "Email ou mot de passe incorrect." };
   }
 
-  if (profile.accountStatus !== "ACTIVE") {
-    return {
-      error: "Votre compte n'est pas encore activé. Vérifiez vos emails.",
-    };
-  }
-
-  const valid = await verifyPassword(password, profile.passwordHash);
-  if (!valid) {
-    return { error: invalidMsg };
-  }
-
-  await createSession({ profileId: profile.id, email: profile.email });
-
-  redirect("/dashboard");
-}
-
-export async function logoutAction(): Promise<void> {
-  const { deleteSession } = await import("@/lib/auth/session");
-  await deleteSession();
-  redirect("/login");
+  redirect("/home");
 }

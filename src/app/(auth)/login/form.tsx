@@ -72,7 +72,7 @@ export default function LoginForm({ activated }: Props) {
 
       <p className="text-center text-sm text-zinc-500 mt-6">
         Pas encore de compte ?{" "}
-        <Link href="/register" className="text-zinc-900 font-medium hover:underline">
+        <Link href="/signup" className="text-zinc-900 font-medium hover:underline">
           S&apos;inscrire
         </Link>
       </p>
