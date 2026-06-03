@@ -39,7 +39,11 @@ export async function signupAction(
     };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  // Strip any trailing slash so we never build a broken `//auth/confirm` link
+  // (the Supabase "Site URL" is often stored with a trailing slash).
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
+  ).replace(/\/+$/, "");
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithOtp({
@@ -51,6 +55,20 @@ export async function signupAction(
   });
 
   if (error) {
+    // Surface the real cause in the server logs (Vercel/host) for debugging.
+    console.error(
+      `[signup] signInWithOtp failed: status=${error.status} code=${error.code} message=${error.message}`,
+    );
+
+    // Rate limit = Supabase's built-in email sender is capped (test-only).
+    // The real fix is configuring Custom SMTP in the Supabase dashboard.
+    if (error.status === 429 || error.code === "over_email_send_rate_limit") {
+      return {
+        error:
+          "Trop de demandes d'email pour le moment. Patientez quelques minutes, puis réessayez.",
+      };
+    }
+
     return {
       error:
         "Impossible d'envoyer l'email pour le moment. Réessayez dans quelques instants.",

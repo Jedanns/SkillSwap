@@ -39,6 +39,19 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- Tie every profile to its auth user with ON DELETE CASCADE. This guarantees a
+-- profile is removed when its auth user is deleted, so orphan rows can never
+-- accumulate — orphans (a profile whose id is absent from auth.users) otherwise
+-- break signup, because the trigger's `on conflict (id)` does not catch the
+-- `profiles_email_key` unique violation when the same email reappears.
+-- NOTE: existing orphans must be deleted before this constraint can be added:
+--   delete from public.profiles p
+--   where not exists (select 1 from auth.users u where u.id = p.id);
+alter table public.profiles drop constraint if exists profiles_id_fkey;
+alter table public.profiles
+  add constraint profiles_id_fkey
+  foreign key (id) references auth.users (id) on delete cascade;
+
 -- ------------------- Campus-only domain restriction -----------------
 -- Belt-and-braces guard. The primary enforcement is at the Supabase Auth
 -- layer (allowed email domains / a "before user created" auth hook).
