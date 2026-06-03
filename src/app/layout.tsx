@@ -43,7 +43,7 @@ export const metadata: Metadata = {
 // mobile browser chrome to the brand canvas so it blends with the page.
 export const viewport: Viewport = {
   colorScheme: "light",
-  themeColor: "#f2f2f0",
+  themeColor: "#f5f7f8",
 };
 
 export default function RootLayout({

@@ -76,11 +76,11 @@ export function ActPlanning({ u, skill }: ActPlanningProps) {
 
         {/* Session block — lands on Thursday 11:00 */}
         <div
-          className="z-10 m-1 flex flex-col justify-center gap-1 rounded-[14px] p-3 text-left shadow-[0_10px_30px_rgba(36,79,67,0.35)]"
+          className="z-10 m-1 flex flex-col justify-center gap-1 rounded-[14px] p-3 text-left shadow-[0_10px_30px_rgba(31,60,69,0.35)]"
           style={{
             gridColumn: SESSION_COL,
             gridRow: SESSION_ROW,
-            backgroundColor: "#244f43",
+            backgroundColor: "#1f3c45",
             opacity: sessionP,
             transform: `scale(${0.8 + sessionP * 0.2})`,
             transformOrigin: "center",

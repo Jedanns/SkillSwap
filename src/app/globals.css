@@ -10,16 +10,20 @@
 
   /* SkillSwap brand palette — generates bg, text and border utilities.
      Defined here (not in :root) because the landing is intentionally
-     light-only and must not be remapped by the .dark theme below. */
-  --color-canvas: #f2f2f0;
+     light-only and must not be remapped by the .dark theme below.
+     Core brand colors: #5B1E78 (purple) / #4FA3B1 (teal)
+     / #1F3C45 (deep ink-teal) / #F5F7F8 (canvas). The pastel-named
+     tokens are kept (pistache/peach/powder) so existing utility classes
+     keep working; they now resolve to tints of the new palette. */
+  --color-canvas: #f5f7f8;
   --color-surface: #ffffff;
-  --color-pistache: #c8f59d;
-  --color-peach: #ffa06a;
-  --color-powder: #c7ddf2;
-  --color-deep-green: #244f43;
-  --color-ink: #0d0d0d;
-  --color-muted-ink: #6b6b6b;
-  --color-hairline: rgba(0, 0, 0, 0.07);
+  --color-pistache: #4fa3b1;
+  --color-peach: #5b1e78;
+  --color-powder: #dceef1;
+  --color-deep-green: #1f3c45;
+  --color-ink: #14272d;
+  --color-muted-ink: #5f6f74;
+  --color-hairline: rgba(31, 60, 69, 0.1);
 
   --font-sans: var(--font-inter);
   --font-mono: var(--font-dm-mono);

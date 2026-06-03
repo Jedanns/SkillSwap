@@ -8,12 +8,12 @@ type ActDualityProps = {
 const ROLES = [
   {
     label: "Élève",
-    accent: "#c8f59d",
+    accent: "#4fa3b1",
     desc: "Tu apprends une compétence auprès d'un pair qui la maîtrise.",
   },
   {
     label: "Tuteur",
-    accent: "#ffa06a",
+    accent: "#5b1e78",
     desc: "Tu transmets ce que tu sais déjà à quelqu'un qui débute.",
   },
 ];

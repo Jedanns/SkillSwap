@@ -16,7 +16,7 @@ export const SKILLS: Skill[] = [
   {
     name: "React",
     level: "Avancé",
-    accent: "#c7ddf2",
+    accent: "#dceef1",
     tutor: "Maxime D.",
     initial: "M",
     rating: 4.9,
@@ -26,7 +26,7 @@ export const SKILLS: Skill[] = [
   {
     name: "Anglais",
     level: "Intermédiaire",
-    accent: "#c8f59d",
+    accent: "#4fa3b1",
     tutor: "Sarah L.",
     initial: "S",
     rating: 4.8,
@@ -36,7 +36,7 @@ export const SKILLS: Skill[] = [
   {
     name: "Gant",
     level: "Débutant",
-    accent: "#ffa06a",
+    accent: "#5b1e78",
     tutor: "Yanis B.",
     initial: "Y",
     rating: 4.7,
