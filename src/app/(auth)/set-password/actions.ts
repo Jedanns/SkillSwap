@@ -57,13 +57,20 @@ export async function setPasswordAction(
     if (error.code === "weak_password") {
       return {
         error:
-          "Ce mot de passe est trop courant ou non conforme. Choisissez-en un autre, plus robuste.",
+          "Ce mot de passe est trop courant. Choisissez-en un autre, plus robuste.",
       };
     }
 
-    // TEMP DEBUG: surface the real Supabase reason in the UI so we can diagnose.
+    // `same_password` means the account's password is already set to this value
+    // (e.g. the student re-submitted after a first success). They're already
+    // authenticated via the confirmation link, so the account is ready — just
+    // send them into the app instead of showing an error.
+    if (error.code === "same_password") {
+      redirect("/home");
+    }
+
     return {
-      error: `[debug] ${error.status} ${error.code}: ${error.message}`,
+      error: "Impossible de définir le mot de passe. Réessayez.",
     };
   }
 
