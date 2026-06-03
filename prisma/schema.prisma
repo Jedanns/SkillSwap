@@ -1,28 +1,461 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Prisma 7 uses the `prisma-client` generator. The client is emitted to the
-// `output` path below and imported from there (see src/lib/prisma.ts).
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
 }
 
-// The connection URL is configured in prisma.config.ts (for the CLI) and via
-// the driver adapter at runtime (see src/lib/prisma.ts), so it is intentionally
-// omitted here in Prisma 7.
 datasource db {
   provider = "postgresql"
 }
 
-// =====================================================================
-// PeerLearn (SkillSwap DSP F2I) — full data model.
-// Conventions: UUID PKs, camelCase fields mapped to snake_case columns,
-// snake_case table names via @@map. New rows generate their UUID in the
-// database; Profile.id stays equal to the Supabase auth.users id.
-// =====================================================================
+/// Campus promotion / cohort (e.g. "B3 Dev 2025-2026"). Gives `Profile.cohort`
+/// a real FK so the platform can filter & group by promo. The campus itself
+/// (DSP F2I) is implicit for now — add a `Campus` parent if the app ever goes
+/// multi-campus.
+model Promotion {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String    @unique
+  slug      String    @unique
+  startYear Int?      @map("start_year")
+  createdAt DateTime  @default(now()) @map("created_at")
+  profiles  Profile[]
 
-// ----------------------------- Enums --------------------------------
+  @@map("promotions")
+}
+
+/// Application profile, mirrored 1:1 from Supabase `auth.users`.
+/// `id` equals the Supabase auth user id (UUID) and is kept in sync by the
+/// `on_auth_user_created` trigger (see the RLS/trigger SQL migration).
+model Profile {
+  id                 String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email              String                    @unique
+  username           String?                   @unique
+  firstName          String?                   @map("first_name")
+  lastName           String?                   @map("last_name")
+  displayName        String?                   @map("display_name")
+  avatarUrl          String?                   @map("avatar_url")
+  bio                String?
+  headline           String?
+  promotionId        String?                   @map("promotion_id") @db.Uuid
+  githubUrl          String?                   @map("github_url")
+  linkedinUrl        String?                   @map("linkedin_url")
+  isProfileComplete  Boolean                   @default(false) @map("is_profile_complete")
+  onboardedAt        DateTime?                 @map("onboarded_at")
+  accountLevel       Int                       @default(1) @map("account_level")
+  accountXp          Int                       @default(0) @map("account_xp")
+  tutorLevel         Int                       @default(1) @map("tutor_level")
+  tutorXp            Int                       @default(0) @map("tutor_xp")
+  studentLevel       Int                       @default(1) @map("student_level")
+  studentXp          Int                       @default(0) @map("student_xp")
+  tutorRatingAvg     Decimal?                  @map("tutor_rating_avg") @db.Decimal(3, 2)
+  studentRatingAvg   Decimal?                  @map("student_rating_avg") @db.Decimal(3, 2)
+  sessionsTaught     Int                       @default(0) @map("sessions_taught")
+  sessionsAttended   Int                       @default(0) @map("sessions_attended")
+  sessionsCompleted  Int                       @default(0) @map("sessions_completed")
+  sessionsCancelled  Int                       @default(0) @map("sessions_cancelled")
+  reliabilityScore   Decimal?                  @map("reliability_score") @db.Decimal(5, 2)
+  rankTier           String?                   @map("rank_tier")
+  featuredOnLanding  Boolean                   @default(false) @map("featured_on_landing")
+  createdAt          DateTime                  @default(now()) @map("created_at")
+  updatedAt          DateTime                  @updatedAt @map("updated_at")
+  activity           ActivityEvent[]
+  comments           Comment[]
+  conversations      ConversationParticipant[]
+  messages           Message[]
+  notificationsActed Notification[]            @relation("NotificationActor")
+  notifications      Notification[]            @relation("NotificationRecipient")
+  likes              PostLike[]
+  posts              Post[]
+  promotion          Promotion?                @relation(fields: [promotionId], references: [id])
+  reviewsReceived    Review[]                  @relation("ReviewReviewee")
+  reviewsGiven       Review[]                  @relation("ReviewReviewer")
+  rubrics            Rubric[]
+  invitationsSent    SessionParticipant[]      @relation("SessionInviter")
+  participations     SessionParticipant[]      @relation("SessionStudent")
+  pings              SkillPing[]
+  skillsCertified    Skill[]                   @relation("SkillCertifiedBy")
+  skillsAuthored     Skill[]                   @relation("SkillCreatedBy")
+  cancelledSessions  TutoringSession[]         @relation("SessionCancelledBy")
+  sessionsAsTutor    TutoringSession[]         @relation("SessionTutor")
+  skills             UserSkill[]
+
+  @@index([promotionId])
+  @@map("profiles")
+}
+
+/// Gamification config — XP thresholds per track/level, editable without a
+/// migration so the balancing phase can tune the curves. The spec's
+/// Expert=Lvl3 / Master=Lvl5 are represented as SKILL rows with a tierLabel.
+model LevelThreshold {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  track     LevelTrack
+  level     Int
+  minXp     Int        @map("min_xp")
+  tierLabel String?    @map("tier_label")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  @@unique([track, level])
+  @@map("level_thresholds")
+}
+
+/// Account-XP ledger — every meaningful action on the platform grants XP.
+model ActivityEvent {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profileId String       @map("profile_id") @db.Uuid
+  type      ActivityType
+  xpAwarded Int          @default(0) @map("xp_awarded")
+  metadata  Json?
+  createdAt DateTime     @default(now()) @map("created_at")
+  profile   Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@map("activity_events")
+}
+
+model SkillCategory {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  skills      Skill[]
+
+  @@map("skill_categories")
+}
+
+/// The global / canonical competence.
+model Skill {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String
+  slug                 String            @unique
+  canonicalDescription String?           @map("canonical_description")
+  categoryId           String?           @map("category_id") @db.Uuid
+  createdById          String            @map("created_by_id") @db.Uuid
+  isCertified          Boolean           @default(false) @map("is_certified")
+  certifiedAt          DateTime?         @map("certified_at")
+  certifiedById        String?           @map("certified_by_id") @db.Uuid
+  featuredUserSkillId  String?           @unique @map("featured_user_skill_id") @db.Uuid
+  heatScore            Float             @default(0) @map("heat_score")
+  sessionCount         Int               @default(0) @map("session_count")
+  lastActivityAt       DateTime?         @map("last_activity_at")
+  isDormant            Boolean           @default(false) @map("is_dormant")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  posts                Post[]
+  rubrics              Rubric[]
+  pings                SkillPing[]
+  notions              SkillNotion[]
+  category             SkillCategory?    @relation(fields: [categoryId], references: [id])
+  certifiedBy          Profile?          @relation("SkillCertifiedBy", fields: [certifiedById], references: [id])
+  createdBy            Profile           @relation("SkillCreatedBy", fields: [createdById], references: [id])
+  featuredUserSkill    UserSkill?        @relation("SkillFeaturedUserSkill", fields: [featuredUserSkillId], references: [id])
+  sessions             TutoringSession[]
+  holders              UserSkill[]       @relation("SkillHolders")
+
+  @@index([categoryId])
+  @@index([createdById])
+  @@index([isCertified])
+  @@index([isDormant, heatScore])
+  @@map("skills")
+}
+
+/// A key concept / chapter associated with a canonical skill.
+/// Allows tutors and students to document the sub-topics covered by a skill.
+model SkillNotion {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  skillId     String   @map("skill_id") @db.Uuid
+  title       String
+  description String?
+  position    Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  skill       Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@index([skillId, position])
+  @@map("skill_notions")
+}
+
+/// A student's possession of a skill: attribution + per-student custom
+/// presentation (the "version" folded in) + per-skill progression.
+model UserSkill {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profileId         String            @map("profile_id") @db.Uuid
+  skillId           String            @map("skill_id") @db.Uuid
+  level             Int               @default(1)
+  xp                Int               @default(0)
+  tier              SkillTier         @default(HOLDER)
+  canTeach          Boolean           @default(false) @map("can_teach")
+  status            SkillStatus       @default(ACTIVE)
+  source            AcquisitionSource @default(SELF_ATTRIBUTED)
+  acquiredAt        DateTime          @default(now()) @map("acquired_at")
+  customTitle       String?           @map("custom_title")
+  customDescription String?           @map("custom_description")
+  customImageUrl    String?           @map("custom_image_url")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  featuredFor       Skill?            @relation("SkillFeaturedUserSkill")
+  profile           Profile           @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  skill             Skill             @relation("SkillHolders", fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, skillId])
+  @@index([skillId, level])
+  @@index([profileId])
+  @@map("user_skills")
+}
+
+/// A student publicly signals they want a tutor on a skill (Volet 3).
+model SkillPing {
+  id                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requesterId         String           @map("requester_id") @db.Uuid
+  skillId             String           @map("skill_id") @db.Uuid
+  message             String?
+  status              PingStatus       @default(OPEN)
+  createdAt           DateTime         @default(now()) @map("created_at")
+  resolvedAt          DateTime?        @map("resolved_at")
+  resolvedBySessionId String?          @map("resolved_by_session_id") @db.Uuid
+  requester           Profile          @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  resolvedBySession   TutoringSession? @relation("PingResolvedBy", fields: [resolvedBySessionId], references: [id])
+  skill               Skill            @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@index([skillId, status])
+  @@index([requesterId])
+  @@index([resolvedBySessionId])
+  @@map("skill_pings")
+}
+
+/// An expert's evaluation referential for a certified skill (Volet 6).
+model Rubric {
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  skillId      String            @map("skill_id") @db.Uuid
+  expertId     String            @map("expert_id") @db.Uuid
+  scale        ScoringScale      @default(OUT_OF_20)
+  passingScore Int               @map("passing_score")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+  reviews      Review[]
+  criteria     RubricCriterion[]
+  expert       Profile           @relation(fields: [expertId], references: [id], onDelete: Cascade)
+  skill        Skill             @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  sessions     TutoringSession[]
+
+  @@unique([skillId, expertId])
+  @@index([skillId])
+  @@map("rubrics")
+}
+
+/// A single notion / checkbox within a rubric.
+model RubricCriterion {
+  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rubricId    String             @map("rubric_id") @db.Uuid
+  label       String
+  position    Int                @default(0)
+  validations NotionValidation[]
+  rubric      Rubric             @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+
+  @@index([rubricId])
+  @@map("rubric_criteria")
+}
+
+model TutoringSession {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tutorId         String               @map("tutor_id") @db.Uuid
+  skillId         String               @map("skill_id") @db.Uuid
+  conversationId  String?              @map("conversation_id") @db.Uuid
+  kind            SessionKind          @default(TUTORING)
+  title           String
+  description     String?
+  scheduledAt     DateTime             @map("scheduled_at")
+  durationMinutes Int                  @map("duration_minutes")
+  status          SessionStatus        @default(PROPOSED)
+  isPublic        Boolean              @default(false) @map("is_public")
+  rubricId        String?              @map("rubric_id") @db.Uuid
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+  completedAt     DateTime?            @map("completed_at")
+  cancelledAt     DateTime?            @map("cancelled_at")
+  cancelledById   String?              @map("cancelled_by_id") @db.Uuid
+  reviews         Review[]
+  participants    SessionParticipant[]
+  resolvedPings   SkillPing[]          @relation("PingResolvedBy")
+  cancelledBy     Profile?             @relation("SessionCancelledBy", fields: [cancelledById], references: [id])
+  conversation    Conversation?        @relation(fields: [conversationId], references: [id])
+  rubric          Rubric?              @relation(fields: [rubricId], references: [id])
+  skill           Skill                @relation(fields: [skillId], references: [id])
+  tutor           Profile              @relation("SessionTutor", fields: [tutorId], references: [id])
+
+  @@index([tutorId, scheduledAt])
+  @@index([skillId])
+  @@index([status, scheduledAt])
+  @@map("tutoring_sessions")
+}
+
+/// One student per row; public sessions hold many — each approves individually.
+/// When the tutor invites a student from an open chat the row is created with
+/// status INVITED and `invitedById` set; a self-join leaves invitedById null.
+model SessionParticipant {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId   String              @map("session_id") @db.Uuid
+  studentId   String              @map("student_id") @db.Uuid
+  status      ParticipationStatus @default(PENDING)
+  attended    Boolean             @default(false)
+  invitedById String?             @map("invited_by_id") @db.Uuid
+  invitedAt   DateTime?           @map("invited_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  invitedBy   Profile?            @relation("SessionInviter", fields: [invitedById], references: [id])
+  session     TutoringSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student     Profile             @relation("SessionStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([studentId, status])
+  @@index([invitedById])
+  @@map("session_participants")
+}
+
+/// Post-session feedback, both directions (Volets 3 & 4). Evaluation extras
+/// (score/passed/rubric) apply only to tutor->student reviews on EVALUATION
+/// sessions for certified skills.
+model Review {
+  id         String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId  String             @map("session_id") @db.Uuid
+  reviewerId String             @map("reviewer_id") @db.Uuid
+  revieweeId String             @map("reviewee_id") @db.Uuid
+  direction  ReviewDirection
+  rating     Int
+  comment    String?
+  score      Int?
+  passed     Boolean?
+  rubricId   String?            @map("rubric_id") @db.Uuid
+  createdAt  DateTime           @default(now()) @map("created_at")
+  notions    NotionValidation[]
+  reviewee   Profile            @relation("ReviewReviewee", fields: [revieweeId], references: [id], onDelete: Cascade)
+  reviewer   Profile            @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  rubric     Rubric?            @relation(fields: [rubricId], references: [id])
+  session    TutoringSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, reviewerId, revieweeId])
+  @@index([revieweeId])
+  @@index([sessionId])
+  @@map("reviews")
+}
+
+/// Tutor's per-notion acquisition checkboxes (Volets 4 & 6). Linked to a
+/// rubric criterion for certified skills, or a free-text label otherwise.
+model NotionValidation {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId          String           @map("review_id") @db.Uuid
+  rubricCriterionId String?          @map("rubric_criterion_id") @db.Uuid
+  label             String?
+  acquired          Boolean          @default(false)
+  review            Review           @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  rubricCriterion   RubricCriterion? @relation(fields: [rubricCriterionId], references: [id])
+
+  @@index([reviewId])
+  @@map("notion_validations")
+}
+
+model Conversation {
+  id            String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type          ConversationType          @default(DIRECT)
+  isPublic      Boolean                   @default(false) @map("is_public")
+  sessionId     String?                   @unique @map("session_id") @db.Uuid
+  createdAt     DateTime                  @default(now()) @map("created_at")
+  lastMessageAt DateTime?                 @map("last_message_at")
+  participants  ConversationParticipant[]
+  messages      Message[]
+  sessions      TutoringSession[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  profileId      String       @map("profile_id") @db.Uuid
+  lastReadAt     DateTime?    @map("last_read_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  profile        Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, profileId])
+  @@index([profileId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  senderId       String       @map("sender_id") @db.Uuid
+  body           String
+  createdAt      DateTime     @default(now()) @map("created_at")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         Profile      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+model Post {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authorId     String     @map("author_id") @db.Uuid
+  kind         PostKind   @default(GENERAL)
+  content      String
+  skillId      String?    @map("skill_id") @db.Uuid
+  likeCount    Int        @default(0) @map("like_count")
+  commentCount Int        @default(0) @map("comment_count")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  comments     Comment[]
+  likes        PostLike[]
+  author       Profile    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  skill        Skill?     @relation(fields: [skillId], references: [id])
+
+  @@index([authorId, createdAt])
+  @@index([skillId])
+  @@map("posts")
+}
+
+model PostLike {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  profileId String   @map("profile_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, profileId])
+  @@index([profileId])
+  @@map("post_likes")
+}
+
+model Comment {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  author    Profile  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@map("comments")
+}
+
+/// Polymorphic notification (entityType/entityId point at the target).
+model Notification {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipientId String           @map("recipient_id") @db.Uuid
+  type        NotificationType
+  actorId     String?          @map("actor_id") @db.Uuid
+  entityType  String?          @map("entity_type")
+  entityId    String?          @map("entity_id") @db.Uuid
+  data        Json?
+  isRead      Boolean          @default(false) @map("is_read")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  actor       Profile?         @relation("NotificationActor", fields: [actorId], references: [id])
+  recipient   Profile          @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, isRead, createdAt])
+  @@map("notifications")
+}
 
 enum SkillTier {
   HOLDER
@@ -62,7 +495,7 @@ enum SessionStatus {
 }
 
 enum ParticipationStatus {
-  INVITED // added to a (public) session by the tutor from an open chat — awaits the student's approval
+  INVITED
   PENDING
   APPROVED
   DECLINED
@@ -125,560 +558,4 @@ enum NotificationType {
   POST_COMMENTED
   SKILL_CERTIFIED
   LEVEL_UP
-}
-
-// ----------------------- Identity & gamification --------------------
-
-/// Campus promotion / cohort (e.g. "B3 Dev 2025-2026"). Gives `Profile.cohort`
-/// a real FK so the platform can filter & group by promo. The campus itself
-/// (DSP F2I) is implicit for now — add a `Campus` parent if the app ever goes
-/// multi-campus.
-model Promotion {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String   @unique
-  slug      String   @unique
-  startYear Int?     @map("start_year")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  profiles Profile[]
-
-  @@map("promotions")
-}
-
-/// Application profile, mirrored 1:1 from Supabase `auth.users`.
-/// `id` equals the Supabase auth user id (UUID) and is kept in sync by the
-/// `on_auth_user_created` trigger (see the RLS/trigger SQL migration).
-model Profile {
-  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email    String  @unique
-  username String? @unique
-
-  firstName   String? @map("first_name")
-  lastName    String? @map("last_name")
-  displayName String? @map("display_name")
-  avatarUrl   String? @map("avatar_url")
-  bio         String?
-  headline    String?
-  promotionId String? @map("promotion_id") @db.Uuid
-  githubUrl   String? @map("github_url")
-  linkedinUrl String? @map("linkedin_url")
-
-  // Authentication is fully delegated to Supabase Auth (auth.users). This
-  // profile row is created by the `on_auth_user_created` trigger; password,
-  // email verification and sessions are owned by Supabase — no auth columns here.
-
-  // Onboarding — drives the forced redirect to profile completion (Volet 2).
-  isProfileComplete Boolean   @default(false) @map("is_profile_complete")
-  onboardedAt       DateTime? @map("onboarded_at")
-
-  // Gamification — three axes (raw ints; tiers computed against LevelThreshold).
-  accountLevel Int @default(1) @map("account_level")
-  accountXp    Int @default(0) @map("account_xp")
-  tutorLevel   Int @default(1) @map("tutor_level")
-  tutorXp      Int @default(0) @map("tutor_xp")
-  studentLevel Int @default(1) @map("student_level")
-  studentXp    Int @default(0) @map("student_xp")
-
-  // Cached aggregates for ranking / UI.
-  tutorRatingAvg   Decimal? @map("tutor_rating_avg") @db.Decimal(3, 2)
-  studentRatingAvg Decimal? @map("student_rating_avg") @db.Decimal(3, 2)
-
-  // Career session counters — no XP penalty for cancelling; instead the whole
-  // history is kept and surfaced as a reliability %, which (with the levels)
-  // drives the cosmetic rank/badge. reliabilityScore is cached, e.g.
-  // completed / (completed + cancelled) * 100; rankTier is the resolved badge.
-  sessionsTaught    Int      @default(0) @map("sessions_taught")
-  sessionsAttended  Int      @default(0) @map("sessions_attended")
-  sessionsCompleted Int      @default(0) @map("sessions_completed")
-  sessionsCancelled Int      @default(0) @map("sessions_cancelled")
-  reliabilityScore  Decimal? @map("reliability_score") @db.Decimal(5, 2)
-  rankTier          String?  @map("rank_tier")
-
-  featuredOnLanding Boolean @default(false) @map("featured_on_landing")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  promotion          Promotion?                @relation(fields: [promotionId], references: [id], onDelete: SetNull)
-  skills             UserSkill[]
-  pings              SkillPing[]
-  rubrics            Rubric[]
-  sessionsAsTutor    TutoringSession[]         @relation("SessionTutor")
-  cancelledSessions  TutoringSession[]         @relation("SessionCancelledBy")
-  participations     SessionParticipant[]      @relation("SessionStudent")
-  invitationsSent    SessionParticipant[]      @relation("SessionInviter")
-  reviewsGiven       Review[]                  @relation("ReviewReviewer")
-  reviewsReceived    Review[]                  @relation("ReviewReviewee")
-  conversations      ConversationParticipant[]
-  messages           Message[]
-  posts              Post[]
-  comments           Comment[]
-  likes              PostLike[]
-  notifications      Notification[]            @relation("NotificationRecipient")
-  notificationsActed Notification[]            @relation("NotificationActor")
-  activity           ActivityEvent[]
-  xpTransactions     XpTransaction[]
-  skillsAuthored     Skill[]                   @relation("SkillCreatedBy")
-  skillsCertified    Skill[]                   @relation("SkillCertifiedBy")
-
-  @@index([promotionId])
-  @@map("profiles")
-}
-
-/// Gamification config — XP thresholds per track/level, editable without a
-/// migration so the balancing phase can tune the curves. The spec's
-/// Expert=Lvl3 / Master=Lvl5 are represented as SKILL rows with a tierLabel.
-model LevelThreshold {
-  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  track     LevelTrack
-  level     Int
-  minXp     Int        @map("min_xp")
-  tierLabel String?    @map("tier_label")
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
-
-  @@unique([track, level])
-  @@map("level_thresholds")
-}
-
-/// Account-XP ledger — every meaningful action on the platform grants XP.
-model ActivityEvent {
-  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  profileId String       @map("profile_id") @db.Uuid
-  type      ActivityType
-  xpAwarded Int          @default(0) @map("xp_awarded")
-  metadata  Json?
-  createdAt DateTime     @default(now()) @map("created_at")
-
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@index([profileId, createdAt])
-  @@map("activity_events")
-}
-
-/// Append-only XP ledger — one row per grant, per track. The running totals
-/// live on Profile (account/tutor/student XP + level); this table is the audit
-/// trail and the idempotency key (sessionId + reason) for event-driven awards.
-model XpTransaction {
-  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  profileId String     @map("profile_id") @db.Uuid
-  track     LevelTrack
-  amount    Int
-  reason    String
-  sessionId String?    @map("session_id") @db.Uuid
-  createdAt DateTime   @default(now()) @map("created_at")
-
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@index([profileId, createdAt])
-  @@index([sessionId])
-  @@map("xp_transactions")
-}
-
-// --------------------------- Skills catalogue -----------------------
-
-model SkillCategory {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String   @unique
-  slug        String   @unique
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  skills Skill[]
-
-  @@map("skill_categories")
-}
-
-/// The global / canonical competence.
-model Skill {
-  id                   String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                 String
-  slug                 String  @unique
-  canonicalDescription String? @map("canonical_description")
-  categoryId           String? @map("category_id") @db.Uuid
-  createdById          String  @map("created_by_id") @db.Uuid
-
-  // Certification (Volet 6). Once certified the skill can no longer be
-  // self-attributed (guarded in the app layer + RLS).
-  isCertified   Boolean   @default(false) @map("is_certified")
-  certifiedAt   DateTime? @map("certified_at")
-  certifiedById String?   @map("certified_by_id") @db.Uuid
-
-  // Denormalized pointer to the UserSkill whose custom presentation is shown
-  // on the public skill page (the highest-combined-level holder). Recomputed
-  // on level changes.
-  featuredUserSkillId String? @unique @map("featured_user_skill_id") @db.Uuid
-
-  // "Heat" / freshness. Each time the skill appears in a session (or a ping)
-  // its heat is boosted and lastActivityAt is bumped; a scheduled job decays
-  // heat over time. When it stays cold too long the skill goes dormant and is
-  // demoted in search / carousels. This is what keeps a certified skill from
-  // staying pinned forever after its expert leaves.
-  heatScore      Float     @default(0) @map("heat_score")
-  sessionCount   Int       @default(0) @map("session_count")
-  lastActivityAt DateTime? @map("last_activity_at")
-  isDormant      Boolean   @default(false) @map("is_dormant")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  category          SkillCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  createdBy         Profile           @relation("SkillCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  certifiedBy       Profile?          @relation("SkillCertifiedBy", fields: [certifiedById], references: [id], onDelete: SetNull)
-  featuredUserSkill UserSkill?        @relation("SkillFeaturedUserSkill", fields: [featuredUserSkillId], references: [id], onDelete: SetNull)
-  holders           UserSkill[]       @relation("SkillHolders")
-  notions           SkillNotion[]
-  pings             SkillPing[]
-  rubrics           Rubric[]
-  sessions          TutoringSession[]
-  posts             Post[]
-
-  @@index([categoryId])
-  @@index([createdById])
-  @@index([isCertified])
-  @@index([isDormant, heatScore])
-  @@map("skills")
-}
-
-/// The canonical list of notions / topics covered by a skill (syllabus).
-/// Used to inform tutors what to teach and students what to expect.
-model SkillNotion {
-  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  skillId     String  @map("skill_id") @db.Uuid
-  title       String
-  description String?
-  position    Int     @default(0)
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
-
-  @@index([skillId])
-  @@map("skill_notions")
-}
-
-/// A student's possession of a skill: attribution + per-student custom
-/// presentation (the "version" folded in) + per-skill progression.
-model UserSkill {
-  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  profileId String @map("profile_id") @db.Uuid
-  skillId   String @map("skill_id") @db.Uuid
-
-  // Progression
-  level    Int       @default(1)
-  xp       Int       @default(0)
-  tier     SkillTier @default(HOLDER)
-  canTeach Boolean   @default(false) @map("can_teach")
-
-  // Provenance
-  status     SkillStatus       @default(ACTIVE)
-  source     AcquisitionSource @default(SELF_ATTRIBUTED)
-  acquiredAt DateTime          @default(now()) @map("acquired_at")
-
-  // Custom presentation (the per-student version of the skill).
-  customTitle       String? @map("custom_title")
-  customDescription String? @map("custom_description")
-  customImageUrl    String? @map("custom_image_url")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  profile     Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  skill       Skill   @relation("SkillHolders", fields: [skillId], references: [id], onDelete: Cascade)
-  featuredFor Skill?  @relation("SkillFeaturedUserSkill")
-
-  @@unique([profileId, skillId])
-  @@index([skillId, level])
-  @@index([profileId])
-  @@map("user_skills")
-}
-
-/// A student publicly signals they want a tutor on a skill (Volet 3).
-model SkillPing {
-  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  requesterId String     @map("requester_id") @db.Uuid
-  skillId     String     @map("skill_id") @db.Uuid
-  message     String?
-  status      PingStatus @default(OPEN)
-  createdAt   DateTime   @default(now()) @map("created_at")
-  resolvedAt  DateTime?  @map("resolved_at")
-
-  // Explicit link to the session that satisfied this ping (one public session
-  // can resolve many pings). Null while the ping is still open.
-  resolvedBySessionId String? @map("resolved_by_session_id") @db.Uuid
-
-  requester         Profile          @relation(fields: [requesterId], references: [id], onDelete: Cascade)
-  skill             Skill            @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  resolvedBySession TutoringSession? @relation("PingResolvedBy", fields: [resolvedBySessionId], references: [id], onDelete: SetNull)
-
-  @@index([skillId, status])
-  @@index([requesterId])
-  @@index([resolvedBySessionId])
-  @@map("skill_pings")
-}
-
-// ----------------------- Certification / evaluation -----------------
-
-/// An expert's evaluation referential for a certified skill (Volet 6).
-model Rubric {
-  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  skillId      String       @map("skill_id") @db.Uuid
-  expertId     String       @map("expert_id") @db.Uuid
-  scale        ScoringScale @default(OUT_OF_20)
-  passingScore Int          @map("passing_score")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
-
-  skill    Skill             @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  expert   Profile           @relation(fields: [expertId], references: [id], onDelete: Cascade)
-  criteria RubricCriterion[]
-  sessions TutoringSession[]
-  reviews  Review[]
-
-  @@unique([skillId, expertId])
-  @@index([skillId])
-  @@map("rubrics")
-}
-
-/// A single notion / checkbox within a rubric.
-model RubricCriterion {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  rubricId String @map("rubric_id") @db.Uuid
-  label    String
-  position Int    @default(0)
-
-  rubric      Rubric             @relation(fields: [rubricId], references: [id], onDelete: Cascade)
-  validations NotionValidation[]
-
-  @@index([rubricId])
-  @@map("rubric_criteria")
-}
-
-// ------------------------------ Tutoring ----------------------------
-
-model TutoringSession {
-  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tutorId         String        @map("tutor_id") @db.Uuid
-  skillId         String        @map("skill_id") @db.Uuid
-  conversationId  String?       @map("conversation_id") @db.Uuid
-  kind            SessionKind   @default(TUTORING)
-  title           String
-  description     String?
-  scheduledAt     DateTime      @map("scheduled_at")
-  durationMinutes Int           @map("duration_minutes")
-  status          SessionStatus @default(PROPOSED)
-  isPublic        Boolean       @default(false) @map("is_public")
-  rubricId        String?       @map("rubric_id") @db.Uuid
-
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-  completedAt   DateTime? @map("completed_at")
-  cancelledAt   DateTime? @map("cancelled_at")
-  cancelledById String?   @map("cancelled_by_id") @db.Uuid
-
-  tutor         Profile              @relation("SessionTutor", fields: [tutorId], references: [id], onDelete: Restrict)
-  cancelledBy   Profile?             @relation("SessionCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull)
-  skill         Skill                @relation(fields: [skillId], references: [id], onDelete: Restrict)
-  conversation  Conversation?        @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-  rubric        Rubric?              @relation(fields: [rubricId], references: [id], onDelete: SetNull)
-  participants  SessionParticipant[]
-  reviews       Review[]
-  resolvedPings SkillPing[]          @relation("PingResolvedBy")
-
-  @@index([tutorId, scheduledAt])
-  @@index([skillId])
-  @@index([status, scheduledAt])
-  @@map("tutoring_sessions")
-}
-
-/// One student per row; public sessions hold many — each approves individually.
-/// When the tutor invites a student from an open chat the row is created with
-/// status INVITED and `invitedById` set; a self-join leaves invitedById null.
-model SessionParticipant {
-  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sessionId   String              @map("session_id") @db.Uuid
-  studentId   String              @map("student_id") @db.Uuid
-  status      ParticipationStatus @default(PENDING)
-  attended    Boolean             @default(false)
-  invitedById String?             @map("invited_by_id") @db.Uuid
-  invitedAt   DateTime?           @map("invited_at")
-  createdAt   DateTime            @default(now()) @map("created_at")
-
-  session   TutoringSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student   Profile         @relation("SessionStudent", fields: [studentId], references: [id], onDelete: Cascade)
-  invitedBy Profile?        @relation("SessionInviter", fields: [invitedById], references: [id], onDelete: SetNull)
-
-  @@unique([sessionId, studentId])
-  @@index([studentId, status])
-  @@index([invitedById])
-  @@map("session_participants")
-}
-
-// ------------------------------ Feedback ----------------------------
-
-/// Post-session feedback, both directions (Volets 3 & 4). Evaluation extras
-/// (score/passed/rubric) apply only to tutor->student reviews on EVALUATION
-/// sessions for certified skills.
-model Review {
-  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sessionId  String          @map("session_id") @db.Uuid
-  reviewerId String          @map("reviewer_id") @db.Uuid
-  revieweeId String          @map("reviewee_id") @db.Uuid
-  direction  ReviewDirection
-  rating     Int
-  comment    String?
-
-  score    Int?
-  passed   Boolean?
-  rubricId String?  @map("rubric_id") @db.Uuid
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  session  TutoringSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  reviewer Profile            @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
-  reviewee Profile            @relation("ReviewReviewee", fields: [revieweeId], references: [id], onDelete: Cascade)
-  rubric   Rubric?            @relation(fields: [rubricId], references: [id], onDelete: SetNull)
-  notions  NotionValidation[]
-
-  @@unique([sessionId, reviewerId, revieweeId])
-  @@index([revieweeId])
-  @@index([sessionId])
-  @@map("reviews")
-}
-
-/// Tutor's per-notion acquisition checkboxes (Volets 4 & 6). Linked to a
-/// rubric criterion for certified skills, or a free-text label otherwise.
-model NotionValidation {
-  id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reviewId          String  @map("review_id") @db.Uuid
-  rubricCriterionId String? @map("rubric_criterion_id") @db.Uuid
-  label             String?
-  acquired          Boolean @default(false)
-
-  review          Review           @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  rubricCriterion RubricCriterion? @relation(fields: [rubricCriterionId], references: [id], onDelete: SetNull)
-
-  @@index([reviewId])
-  @@map("notion_validations")
-}
-
-// -------------------------------- Chat ------------------------------
-
-model Conversation {
-  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  type          ConversationType @default(DIRECT)
-  // Open group thread (e.g. a public-session room anyone matched on the skill
-  // can join) vs a private DM. SESSION-type conversations back a session room.
-  isPublic      Boolean          @default(false) @map("is_public")
-  sessionId     String?          @unique @map("session_id") @db.Uuid
-  createdAt     DateTime         @default(now()) @map("created_at")
-  lastMessageAt DateTime?        @map("last_message_at")
-
-  participants ConversationParticipant[]
-  messages     Message[]
-  sessions     TutoringSession[]
-
-  @@map("conversations")
-}
-
-model ConversationParticipant {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversationId String    @map("conversation_id") @db.Uuid
-  profileId      String    @map("profile_id") @db.Uuid
-  lastReadAt     DateTime? @map("last_read_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  profile      Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@unique([conversationId, profileId])
-  @@index([profileId])
-  @@map("conversation_participants")
-}
-
-model Message {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversationId String   @map("conversation_id") @db.Uuid
-  senderId       String   @map("sender_id") @db.Uuid
-  body           String
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       Profile      @relation(fields: [senderId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId, createdAt])
-  @@map("messages")
-}
-
-// ----------------------------- Social feed --------------------------
-
-model Post {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  authorId     String   @map("author_id") @db.Uuid
-  kind         PostKind @default(GENERAL)
-  content      String
-  skillId      String?  @map("skill_id") @db.Uuid
-  likeCount    Int      @default(0) @map("like_count")
-  commentCount Int      @default(0) @map("comment_count")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  author   Profile    @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  skill    Skill?     @relation(fields: [skillId], references: [id], onDelete: SetNull)
-  likes    PostLike[]
-  comments Comment[]
-
-  @@index([authorId, createdAt])
-  @@index([skillId])
-  @@map("posts")
-}
-
-model PostLike {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId    String   @map("post_id") @db.Uuid
-  profileId String   @map("profile_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
-
-  post    Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, profileId])
-  @@index([profileId])
-  @@map("post_likes")
-}
-
-model Comment {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId    String   @map("post_id") @db.Uuid
-  authorId  String   @map("author_id") @db.Uuid
-  body      String
-  createdAt DateTime @default(now()) @map("created_at")
-
-  post   Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author Profile @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([postId, createdAt])
-  @@map("comments")
-}
-
-// ----------------------------- Cross-cutting ------------------------
-
-/// Polymorphic notification (entityType/entityId point at the target).
-model Notification {
-  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  recipientId String           @map("recipient_id") @db.Uuid
-  type        NotificationType
-  actorId     String?          @map("actor_id") @db.Uuid
-  entityType  String?          @map("entity_type")
-  entityId    String?          @map("entity_id") @db.Uuid
-  data        Json?
-  isRead      Boolean          @default(false) @map("is_read")
-  createdAt   DateTime         @default(now()) @map("created_at")
-
-  recipient Profile  @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  actor     Profile? @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
-
-  @@index([recipientId, isRead, createdAt])
-  @@map("notifications")
 }

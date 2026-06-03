@@ -90,18 +90,11 @@ export async function searchSkills(query?: string, categoryId?: string) {
     },
     include: {
       category: true,
-      _count: { select: { holders: true } },
+      _count: { select: { holders: true, sessions: true, notions: true } },
     },
     orderBy: [{ heatScore: "desc" }, { name: "asc" }],
   });
 }
-
-// Notions 
-
-export type AddNotionsInput = {
-  title: string;
-  description?: string;
-}[];
 
 // Claim (attribution) 
 
@@ -127,8 +120,14 @@ export async function claimSkill(profileId: string, skillId: string) {
   });
 }
 
+// Claim (attribution) — end
+
+export type AddNotionsInput = {
+  title: string;
+  description?: string;
+}[];
+
 export async function addNotionsToSkill(skillId: string, notions: AddNotionsInput) {
-  // Get current max position to append after existing notions
   const last = await prisma.skillNotion.findFirst({
     where: { skillId },
     orderBy: { position: "desc" },
@@ -155,7 +154,12 @@ export async function getUserSkills(profileId: string) {
     orderBy: { acquiredAt: "desc" },
     include: {
       skill: {
-        include: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          isCertified: true,
+          canonicalDescription: true,
           category: true,
           _count: { select: { holders: true, sessions: true } },
         },
@@ -175,7 +179,11 @@ export async function addUserSkill(profileId: string, skillId: string) {
 
   return prisma.userSkill.create({
     data: { profileId, skillId, source: "SELF_ATTRIBUTED" },
-    include: { skill: { select: { name: true, slug: true } } },
+    include: {
+      skill: {
+        select: { id: true, name: true, slug: true, isCertified: true, category: true },
+      },
+    },
   });
 }
 
@@ -203,5 +211,103 @@ export async function createPing(requesterId: string, skillId: string, message?:
   const ping = await prisma.skillPing.create({
     data: { requesterId, skillId, message },
   });
+  return { alreadyExists: false as const, ping };
+}
+
+// Skill catalog search with holder details (for "Rechercher une compétence" tab)
+
+export async function searchSkillsCatalog(query?: string, categoryId?: string) {
+  return prisma.skill.findMany({
+    where: {
+      isDormant: false,
+      ...(categoryId ? { categoryId } : {}),
+      ...(query
+        ? {
+            OR: [
+              { name: { contains: query, mode: "insensitive" } },
+              { canonicalDescription: { contains: query, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
+    include: {
+      category: true,
+      _count: { select: { holders: true, sessions: true } },
+    },
+    orderBy: [{ heatScore: "desc" }, { name: "asc" }],
+    take: 50,
+  });
+}
+
+export async function getSkillWithHolders(skillId: string) {
+  return prisma.skill.findUnique({
+    where: { id: skillId },
+    include: {
+      category: true,
+      notions: { orderBy: { position: "asc" } },
+      _count: { select: { holders: true, sessions: true } },
+      holders: {
+        where: { status: "ACTIVE" },
+        orderBy: [{ tier: "desc" }, { level: "desc" }],
+        take: 20,
+        include: {
+          profile: {
+            select: {
+              id: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              displayName: true,
+              avatarUrl: true,
+              tutorLevel: true,
+              tutorRatingAvg: true,
+            },
+          },
+        },
+      },
+      createdBy: {
+        select: { id: true, username: true, firstName: true, lastName: true, avatarUrl: true },
+      },
+    },
+  });
+}
+
+// Create a ping and notify all skill holders who can teach it
+export async function createPingWithNotifications(
+  requesterId: string,
+  requesterName: string,
+  skillId: string,
+  skillName: string,
+  message?: string,
+) {
+  const existing = await prisma.skillPing.findFirst({
+    where: { requesterId, skillId, status: "OPEN" },
+  });
+  if (existing) return { alreadyExists: true as const, ping: existing };
+
+  // Find all ACTIVE holders who are not the requester
+  const holders = await prisma.userSkill.findMany({
+    where: { skillId, status: "ACTIVE", profileId: { not: requesterId } },
+    select: { profileId: true },
+  });
+
+  const [ping] = await prisma.$transaction([
+    prisma.skillPing.create({
+      data: { requesterId, skillId, message },
+    }),
+    ...holders.map((h) =>
+      prisma.notification.create({
+        data: {
+          recipientId: h.profileId,
+          type: "PING_RECEIVED",
+          actorId: requesterId,
+          entityType: "skill",
+          entityId: skillId,
+          data: { skillName, requesterName, message: message ?? null },
+        },
+      }),
+    ),
+  ]);
+
   return { alreadyExists: false as const, ping };
 }

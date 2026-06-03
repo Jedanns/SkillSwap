@@ -38,3 +38,4 @@ export async function POST(
   const result = await addNotionsToSkill(skill.id, valid);
   return NextResponse.json({ count: result.count }, { status: 201 });
 }
+
