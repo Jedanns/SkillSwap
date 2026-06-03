@@ -43,3 +43,7 @@ next-env.d.ts
 
 # prisma (generated client — regenerated via `prisma generate`)
 /src/generated/prisma
+
+# dev-only test pages
+/src/app/dev/
+/src/app/api/dev/

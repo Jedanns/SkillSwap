@@ -308,6 +308,7 @@ model Skill {
   certifiedBy       Profile?          @relation("SkillCertifiedBy", fields: [certifiedById], references: [id], onDelete: SetNull)
   featuredUserSkill UserSkill?        @relation("SkillFeaturedUserSkill", fields: [featuredUserSkillId], references: [id], onDelete: SetNull)
   holders           UserSkill[]       @relation("SkillHolders")
+  notions           SkillNotion[]
   pings             SkillPing[]
   rubrics           Rubric[]
   sessions          TutoringSession[]
@@ -318,6 +319,23 @@ model Skill {
   @@index([isCertified])
   @@index([isDormant, heatScore])
   @@map("skills")
+}
+
+/// The canonical list of notions / topics covered by a skill (syllabus).
+/// Used to inform tutors what to teach and students what to expect.
+model SkillNotion {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  skillId     String  @map("skill_id") @db.Uuid
+  title       String
+  description String?
+  position    Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@index([skillId])
+  @@map("skill_notions")
 }
 
 /// A student's possession of a skill: attribution + per-student custom
