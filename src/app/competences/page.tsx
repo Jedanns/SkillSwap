@@ -46,89 +46,6 @@ interface CatalogSkill {
   _count: { holders: number };
 }
 
-//Mock data 
-
-const MOCK_USER_SKILLS: UserSkill[] = [
-  {
-    id: "us1",
-    tier: "EXPERT",
-    level: 7,
-    xp: 1420,
-    canTeach: true,
-    skill: {
-      id: "sk1",
-      name: "React",
-      category: { id: "c1", name: "Développement web" },
-      _count: { holders: 48, sessions: 23 },
-    },
-  },
-  {
-    id: "us2",
-    tier: "HOLDER",
-    level: 2,
-    xp: 280,
-    canTeach: false,
-    skill: {
-      id: "sk2",
-      name: "Node.js",
-      category: { id: "c1", name: "Développement web" },
-      _count: { holders: 35, sessions: 17 },
-    },
-  },
-  {
-    id: "us3",
-    tier: "MASTER",
-    level: 12,
-    xp: 4200,
-    canTeach: true,
-    skill: {
-      id: "sk3",
-      name: "TypeScript",
-      category: { id: "c1", name: "Développement web" },
-      _count: { holders: 61, sessions: 44 },
-    },
-  },
-  {
-    id: "us4",
-    tier: "HOLDER",
-    level: 1,
-    xp: 80,
-    canTeach: false,
-    skill: {
-      id: "sk4",
-      name: "Figma",
-      category: { id: "c2", name: "Design" },
-      _count: { holders: 29, sessions: 8 },
-    },
-  },
-  {
-    id: "us5",
-    tier: "EXPERT",
-    level: 5,
-    xp: 870,
-    canTeach: true,
-    skill: {
-      id: "sk5",
-      name: "PostgreSQL",
-      category: { id: "c3", name: "Base de données" },
-      _count: { holders: 22, sessions: 11 },
-    },
-  },
-];
-
-const MOCK_CATALOG: CatalogSkill[] = [
-  { id: "sk6", name: "Vue.js", category: { id: "c1", name: "Développement web" }, _count: { holders: 31 } },
-  { id: "sk7", name: "Python", category: { id: "c4", name: "Programmation" }, _count: { holders: 74 } },
-  { id: "sk8", name: "Docker", category: { id: "c5", name: "DevOps" }, _count: { holders: 19 } },
-  { id: "sk9", name: "Tailwind CSS", category: { id: "c1", name: "Développement web" }, _count: { holders: 42 } },
-  { id: "sk10", name: "GraphQL", category: { id: "c1", name: "Développement web" }, _count: { holders: 16 } },
-  { id: "sk11", name: "Machine Learning", category: { id: "c4", name: "Programmation" }, _count: { holders: 11 } },
-  { id: "sk12", name: "Kubernetes", category: { id: "c5", name: "DevOps" }, _count: { holders: 8 } },
-  { id: "sk13", name: "UX Research", category: { id: "c2", name: "Design" }, _count: { holders: 14 } },
-  { id: "sk14", name: "Swift", category: { id: "c4", name: "Programmation" }, _count: { holders: 9 } },
-  { id: "sk15", name: "MongoDB", category: { id: "c3", name: "Base de données" }, _count: { holders: 27 } },
-];
-
 //Helpers
 
 const TIER_CONFIG: Record<Tier, { label: string; color: string; bg: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -298,7 +215,7 @@ function AddSkillModal({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<CatalogSkill[]>(MOCK_CATALOG);
+  const [results, setResults] = useState<CatalogSkill[]>([]);
   const [adding, setAdding] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
   const [pingSkill, setPingSkill] = useState<CatalogSkill | null>(null);
@@ -309,15 +226,21 @@ function AddSkillModal({
   }, []);
 
   useEffect(() => {
-    // Filter mock catalog locally; in production, debounce API call
-    const lower = query.toLowerCase();
-    setResults(
-      MOCK_CATALOG.filter(
-        (s) =>
-          s.name.toLowerCase().includes(lower) ||
-          s.category.name.toLowerCase().includes(lower),
-      ),
-    );
+    // Debounced search against the live skills catalogue.
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      const qs = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : "";
+      fetch(`/api/skills${qs}`, { signal: controller.signal })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data: unknown) => {
+          if (Array.isArray(data)) setResults(data as CatalogSkill[]);
+        })
+        .catch(() => {});
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [query]);
 
   async function handleAdd(skill: CatalogSkill) {
@@ -328,14 +251,13 @@ function AddSkillModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skillId: skill.id }),
       });
-      // Optimistic — works even if API fails (mock mode)
-      if (res.ok || res.status === 401) {
+      // 409 means it's already in the portfolio — treat as added too.
+      if (res.ok || res.status === 409) {
         setAdded((prev) => new Set(prev).add(skill.id));
         onAdd(skill);
       }
     } catch {
-      setAdded((prev) => new Set(prev).add(skill.id));
-      onAdd(skill);
+      // Network error — leave the row actionable so the user can retry.
     } finally {
       setAdding(null);
     }
@@ -617,19 +539,20 @@ function SkillCard({ us, onView }: { us: UserSkill; onView: () => void }) {
 //Main page 
 
 export default function CompetencesPage() {
-  const [userSkills, setUserSkills] = useState<UserSkill[]>(MOCK_USER_SKILLS);
+  const [userSkills, setUserSkills] = useState<UserSkill[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [viewTarget, setViewTarget] = useState<UserSkill | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // Try to load real data
   useEffect(() => {
     fetch("/api/user/skills")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) setUserSkills(data);
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: unknown) => {
+        if (Array.isArray(data)) setUserSkills(data as UserSkill[]);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const filtered = userSkills.filter((us) =>
@@ -720,7 +643,12 @@ export default function CompetencesPage() {
           </div>
 
           {/* Grid */}
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-20 text-muted-ink">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm">Chargement de vos compétences…</span>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-hairline py-20 text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-canvas">
                 <BookOpen className="h-6 w-6 text-muted-ink" />

@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Clock,
   GraduationCap,
+  Loader2,
   MessageSquare,
   Search,
   Send,
@@ -72,127 +73,6 @@ type SessionDetail = {
   reviews?: Review[];
   _count: { participants: number };
 };
-
-//Mock data 
-
-const MOCK_SESSIONS: SessionDetail[] = [
-  {
-    id: "1",
-    title: "Hooks & state management en React",
-    description:
-      "On va revoir ensemble useState, useEffect, useRef et les patterns custom hooks. Ideal si tu debutes sur les projets React complexes.",
-    kind: "TUTORING",
-    status: "CONFIRMED",
-    isPublic: true,
-    scheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-    durationMinutes: 90,
-    tutor: { id: "t1", firstName: "Camille", lastName: "Dupont", username: "camille.d", avatarUrl: null, headline: "Expert React B3 Dev 2025-2026" },
-    skill: { id: "s1", name: "React", slug: "react", canonicalDescription: "Bibliotheque JavaScript pour construire des interfaces utilisateur declaratives et composant-based.", category: { name: "Frontend" } },
-    participants: [
-      { id: "p1", status: "APPROVED", attended: false, student: { id: "u2", firstName: "Lucas", lastName: "Martin", username: "lucas.m", avatarUrl: null } },
-      { id: "p2", status: "APPROVED", attended: false, student: { id: "u3", firstName: "Ines", lastName: "Bouchard", username: "ines.b", avatarUrl: null } },
-    ],
-    _count: { participants: 2 },
-  },
-  {
-    id: "2",
-    title: "Introduction a TypeScript les bases",
-    description: "Typage statique, interfaces, generiques et les pieges classiques a eviter quand on vient de JavaScript.",
-    kind: "TUTORING",
-    status: "PROPOSED",
-    isPublic: true,
-    scheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString(),
-    durationMinutes: 60,
-    tutor: { id: "t2", firstName: "Theo", lastName: "Renaud", username: "theo.r", avatarUrl: null, headline: "Master TypeScript & Node.js" },
-    skill: { id: "s2", name: "TypeScript", slug: "typescript", canonicalDescription: "Superset type de JavaScript qui compile en JavaScript standard.", category: { name: "Langages" } },
-    participants: [],
-    _count: { participants: 0 },
-  },
-  {
-    id: "3",
-    title: "Evaluation React niveau Expert",
-    description: "Session evaluation officielle pour la certification React niveau Expert. Grille de rubrique sur 20 points.",
-    kind: "EVALUATION",
-    status: "COMPLETED",
-    isPublic: false,
-    scheduledAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-    durationMinutes: 120,
-    tutor: { id: "t1", firstName: "Camille", lastName: "Dupont", username: "camille.d", avatarUrl: null, headline: "Expert React B3 Dev 2025-2026" },
-    skill: { id: "s1", name: "React", slug: "react", canonicalDescription: "Bibliotheque JavaScript pour construire des interfaces utilisateur declaratives.", category: { name: "Frontend" } },
-    participants: [
-      { id: "p3", status: "APPROVED", attended: true, student: { id: "u4", firstName: "Marie", lastName: "Lefort", username: "marie.l", avatarUrl: null } },
-    ],
-    reviews: [
-      { id: "r1", direction: "STUDENT_TO_TUTOR", rating: 5, comment: "Super session, Camille explique tres clairement. J ai enfin compris les custom hooks !", reviewer: { id: "u4", firstName: "Marie", lastName: "Lefort", username: "marie.l", avatarUrl: null }, reviewee: { id: "t1", firstName: "Camille", lastName: "Dupont", username: "camille.d", avatarUrl: null } },
-      { id: "r2", direction: "TUTOR_TO_STUDENT", rating: 4, comment: "Marie est tres investie et progresse rapidement. Quelques bases a consolider sur useEffect.", reviewer: { id: "t1", firstName: "Camille", lastName: "Dupont", username: "camille.d", avatarUrl: null }, reviewee: { id: "u4", firstName: "Marie", lastName: "Lefort", username: "marie.l", avatarUrl: null } },
-    ],
-    _count: { participants: 1 },
-  },
-  {
-    id: "4",
-    title: "SQL avance fenetres & performances",
-    description: "Window functions, CTE recursives, plans d execution et optimisation des requetes longues.",
-    kind: "TUTORING",
-    status: "IN_PROGRESS",
-    isPublic: false,
-    scheduledAt: new Date().toISOString(),
-    durationMinutes: 75,
-    tutor: { id: "t3", firstName: "Nadia", lastName: "Ferreira", username: "nadia.f", avatarUrl: null, headline: "Data Engineer expert SQL" },
-    skill: { id: "s3", name: "SQL", slug: "sql", canonicalDescription: "Langage de requete structure pour la gestion et l interrogation des bases de donnees relationnelles.", category: { name: "Base de donnees" } },
-    participants: [
-      { id: "p4", status: "APPROVED", attended: true, student: { id: "u5", firstName: "Antoine", lastName: "Girard", username: "antoine.g", avatarUrl: null } },
-      { id: "p5", status: "APPROVED", attended: true, student: { id: "u6", firstName: "Sofia", lastName: "Morel", username: "sofia.m", avatarUrl: null } },
-    ],
-    _count: { participants: 2 },
-  },
-  {
-    id: "5",
-    title: "Figma pour les devs handoff & tokens",
-    description: "Comment lire un fichier Figma comme un dev, extraire les design tokens, et travailler efficacement avec les designers.",
-    kind: "TUTORING",
-    status: "AWAITING_FEEDBACK",
-    isPublic: true,
-    scheduledAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    durationMinutes: 60,
-    tutor: { id: "t4", firstName: "Jade", lastName: "Petit", username: "jade.p", avatarUrl: null, headline: "Designer & mentor UX/UI" },
-    skill: { id: "s4", name: "Figma", slug: "figma", canonicalDescription: "Outil de design d interfaces collaboratif dans le navigateur.", category: { name: "Design" } },
-    participants: [
-      { id: "p6", status: "APPROVED", attended: true, student: { id: "u7", firstName: "Romain", lastName: "Blanc", username: "romain.b", avatarUrl: null } },
-    ],
-    _count: { participants: 1 },
-  },
-  {
-    id: "6",
-    title: "Git avance rebase, cherry-pick & CI",
-    description: null,
-    kind: "TUTORING",
-    status: "CANCELLED",
-    isPublic: false,
-    scheduledAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-    durationMinutes: 45,
-    tutor: { id: "t2", firstName: "Theo", lastName: "Renaud", username: "theo.r", avatarUrl: null, headline: "Master TypeScript & Node.js" },
-    skill: { id: "s5", name: "Git", slug: "git", canonicalDescription: "Systeme de controle de version distribue.", category: { name: "DevOps" } },
-    participants: [],
-    _count: { participants: 0 },
-  },
-  {
-    id: "7",
-    title: "Node.js & API REST authentification JWT",
-    description: "On implemente ensemble un systeme d auth complet : bcrypt, JWT, refresh tokens et middleware de protection de routes.",
-    kind: "TUTORING",
-    status: "AWAITING_FEEDBACK",
-    isPublic: false,
-    scheduledAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    durationMinutes: 90,
-    tutor: { id: "t2", firstName: "Theo", lastName: "Renaud", username: "theo.r", avatarUrl: null, headline: "Master TypeScript & Node.js" },
-    skill: { id: "s6", name: "Node.js", slug: "nodejs", canonicalDescription: "Environnement d execution JavaScript cote serveur base sur le moteur V8 de Chrome.", category: { name: "Backend" } },
-    participants: [
-      { id: "p7", status: "APPROVED", attended: true, student: { id: "u8", firstName: "Yasmine", lastName: "Ouhab", username: "yasmine.o", avatarUrl: null } },
-      { id: "p8", status: "APPROVED", attended: true, student: { id: "u9", firstName: "Pierre", lastName: "Lamy", username: "pierre.l", avatarUrl: null } },
-    ],
-    _count: { participants: 2 },
-  },
-];
 
 //Config 
 
@@ -510,16 +390,21 @@ const STATUS_FILTER_OPTIONS: { value: SessionStatus | "ALL"; label: string }[] =
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SessionsPage() {
-  const [sessions, setSessions] = useState<SessionDetail[]>(MOCK_SESSIONS);
+  const [sessions, setSessions] = useState<SessionDetail[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<SessionStatus | "ALL">("ALL");
   const [kindFilter, setKindFilter] = useState<SessionKind | "ALL">("ALL");
   const [selectedSession, setSelectedSession] = useState<SessionDetail | null>(null);
 
   useEffect(() => {
-    fetch("/api/sessions").then((r) => r.json()).then((data: unknown) => {
-      if (Array.isArray(data) && data.length > 0) setSessions(data as SessionDetail[]);
-    }).catch(() => {});
+    fetch("/api/sessions")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: unknown) => {
+        if (Array.isArray(data)) setSessions(data as SessionDetail[]);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   async function openSession(session: SessionDetail) {
@@ -577,7 +462,12 @@ export default function SessionsPage() {
           })}
         </div>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-muted-ink">
+            <Loader2 className="size-5 animate-spin" />
+            <span className="text-sm">Chargement des sessions…</span>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-surface py-16 text-center">
             <ChevronDown className="mb-3 size-8 text-zinc-300" />
             <p className="font-semibold text-zinc-400">Aucune session trouvee</p>
