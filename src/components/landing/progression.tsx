@@ -58,7 +58,7 @@ export function Progression() {
                 className={cn(
                   "flex flex-col rounded-[28px] border p-7",
                   featured
-                    ? "border-transparent bg-deep-green text-surface shadow-[0_24px_60px_rgba(36,79,67,0.28)] lg:-mt-4 lg:mb-4"
+                    ? "border-transparent bg-deep-green text-surface shadow-[0_24px_60px_rgba(31,60,69,0.28)] lg:-mt-4 lg:mb-4"
                     : "border-hairline bg-canvas text-ink",
                 )}
               >

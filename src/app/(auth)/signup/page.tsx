@@ -40,7 +40,7 @@ export default function SignupPage() {
     <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 p-8">
       <h1 className="text-2xl font-bold text-zinc-900 mb-1">Créer un compte</h1>
       <p className="text-zinc-500 text-sm mb-6">
-        Entrez votre adresse email étudiante pour commencer.
+        Entrez votre adresse email pour commencer.
       </p>
 
       <form action={formAction} className="space-y-4">
@@ -57,7 +57,7 @@ export default function SignupPage() {
             type="email"
             autoComplete="email"
             required
-            placeholder="prenom.nom@etu-digitalschool.paris"
+            placeholder="prenom.nom@exemple.com"
             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
           />
         </div>

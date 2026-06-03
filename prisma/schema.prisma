@@ -218,6 +218,7 @@ model Profile {
   notifications      Notification[]            @relation("NotificationRecipient")
   notificationsActed Notification[]            @relation("NotificationActor")
   activity           ActivityEvent[]
+  xpTransactions     XpTransaction[]
   skillsAuthored     Skill[]                   @relation("SkillCreatedBy")
   skillsCertified    Skill[]                   @relation("SkillCertifiedBy")
 
@@ -254,6 +255,25 @@ model ActivityEvent {
 
   @@index([profileId, createdAt])
   @@map("activity_events")
+}
+
+/// Append-only XP ledger — one row per grant, per track. The running totals
+/// live on Profile (account/tutor/student XP + level); this table is the audit
+/// trail and the idempotency key (sessionId + reason) for event-driven awards.
+model XpTransaction {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  profileId String     @map("profile_id") @db.Uuid
+  track     LevelTrack
+  amount    Int
+  reason    String
+  sessionId String?    @map("session_id") @db.Uuid
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, createdAt])
+  @@index([sessionId])
+  @@map("xp_transactions")
 }
 
 // --------------------------- Skills catalogue -----------------------
@@ -308,6 +328,7 @@ model Skill {
   certifiedBy       Profile?          @relation("SkillCertifiedBy", fields: [certifiedById], references: [id], onDelete: SetNull)
   featuredUserSkill UserSkill?        @relation("SkillFeaturedUserSkill", fields: [featuredUserSkillId], references: [id], onDelete: SetNull)
   holders           UserSkill[]       @relation("SkillHolders")
+  notions           SkillNotion[]
   pings             SkillPing[]
   rubrics           Rubric[]
   sessions          TutoringSession[]
@@ -318,6 +339,23 @@ model Skill {
   @@index([isCertified])
   @@index([isDormant, heatScore])
   @@map("skills")
+}
+
+/// The canonical list of notions / topics covered by a skill (syllabus).
+/// Used to inform tutors what to teach and students what to expect.
+model SkillNotion {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  skillId     String  @map("skill_id") @db.Uuid
+  title       String
+  description String?
+  position    Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@index([skillId])
+  @@map("skill_notions")
 }
 
 /// A student's possession of a skill: attribution + per-student custom

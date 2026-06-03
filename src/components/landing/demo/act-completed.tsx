@@ -21,7 +21,7 @@ export function ActCompleted({ u, skill }: ActCompletedProps) {
     tutor: "Maxime D.",
     initial: "M",
     level: "Avancé",
-    accent: "#c7ddf2",
+    accent: "#dceef1",
     rating: 4.9,
     reviews: 23,
     blurb: "",
@@ -51,7 +51,7 @@ export function ActCompleted({ u, skill }: ActCompletedProps) {
       >
         {/* Green check badge */}
         <span
-          className="absolute -right-3 -top-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#3CB371] text-canvas shadow-[0_6px_20px_rgba(60,179,113,0.5)]"
+          className="absolute -right-3 -top-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#4FA3B1] text-canvas shadow-[0_6px_20px_rgba(79,163,177,0.5)]"
           style={{
             opacity: checkP,
             transform: `scale(${0.4 + checkP * 0.6})`,
@@ -88,7 +88,7 @@ export function ActCompleted({ u, skill }: ActCompletedProps) {
         <span className="font-heading text-[24px] font-bold tracking-[-0.02em] text-ink">
           {s.name}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#3CB371]">
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[#4FA3B1]">
           ✓ Compétence pratiquée
         </span>
       </div>

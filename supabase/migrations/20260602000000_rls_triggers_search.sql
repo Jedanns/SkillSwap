@@ -39,14 +39,24 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- ------------------- Campus-only domain restriction -----------------
--- Belt-and-braces guard. The primary enforcement is at the Supabase Auth
--- layer (allowed email domains / a "before user created" auth hook).
+-- Tie every profile to its auth user with ON DELETE CASCADE. This guarantees a
+-- profile is removed when its auth user is deleted, so orphan rows can never
+-- accumulate — orphans (a profile whose id is absent from auth.users) otherwise
+-- break signup, because the trigger's `on conflict (id)` does not catch the
+-- `profiles_email_key` unique violation when the same email reappears.
+-- NOTE: existing orphans must be deleted before this constraint can be added:
+--   delete from public.profiles p
+--   where not exists (select 1 from auth.users u where u.id = p.id);
+alter table public.profiles drop constraint if exists profiles_id_fkey;
+alter table public.profiles
+  add constraint profiles_id_fkey
+  foreign key (id) references auth.users (id) on delete cascade;
+
+-- ------------------- Email domain restriction (disabled) ------------
+-- Sign-up is open to any email domain, so the campus-only CHECK constraint is
+-- intentionally NOT created (and dropped if a previous version added it).
 alter table public.profiles
   drop constraint if exists profiles_campus_email_chk;
-alter table public.profiles
-  add constraint profiles_campus_email_chk
-  check (email like '%@etu-digitalschool.paris');
 
 -- ------------------------- Helper functions -------------------------
 -- True when the current auth user participates in the given conversation.
@@ -94,6 +104,7 @@ alter table public.level_thresholds          enable row level security;
 alter table public.activity_events           enable row level security;
 alter table public.skill_categories          enable row level security;
 alter table public.skills                     enable row level security;
+alter table public.skill_notions              enable row level security;
 alter table public.user_skills                enable row level security;
 alter table public.skill_pings                enable row level security;
 alter table public.rubrics                    enable row level security;
@@ -109,6 +120,7 @@ alter table public.posts                      enable row level security;
 alter table public.post_likes                 enable row level security;
 alter table public.comments                   enable row level security;
 alter table public.notifications              enable row level security;
+alter table public.xp_transactions            enable row level security;
 
 -- ============================== Policies ============================
 -- Convention: any authenticated campus user may read shared catalogue/social
@@ -132,6 +144,10 @@ create policy "level_thresholds_select" on public.level_thresholds
 create policy "activity_events_select_own" on public.activity_events
   for select to authenticated using (profile_id = (select auth.uid()));
 
+-- xp_transactions (own ledger; rows are written server-side) ----------
+create policy "xp_transactions_select_own" on public.xp_transactions
+  for select to authenticated using (profile_id = (select auth.uid()));
+
 -- skill_categories (shared catalogue) --------------------------------
 create policy "skill_categories_select" on public.skill_categories
   for select to authenticated using (true);
@@ -143,6 +159,14 @@ create policy "skills_insert" on public.skills
   for insert to authenticated with check (created_by_id = (select auth.uid()));
 create policy "skills_update_author" on public.skills
   for update to authenticated using (created_by_id = (select auth.uid()));
+
+-- skill_notions (shared syllabus; the owning skill's author manages) --
+create policy "skill_notions_select" on public.skill_notions
+  for select to authenticated using (true);
+create policy "skill_notions_write_skill_author" on public.skill_notions
+  for all to authenticated
+  using (exists (select 1 from public.skills s where s.id = skill_id and s.created_by_id = (select auth.uid())))
+  with check (exists (select 1 from public.skills s where s.id = skill_id and s.created_by_id = (select auth.uid())));
 
 -- user_skills (own attribution rows) ---------------------------------
 create policy "user_skills_select" on public.user_skills
