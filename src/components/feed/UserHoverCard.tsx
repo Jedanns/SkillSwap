@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,6 +33,25 @@ function getInitials(a: PostAuthor) {
 export function UserHoverCard({ author }: { author: PostAuthor }) {
   const name = getDisplayName(author);
   const handle = author.username ? `@${author.username}` : null;
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function handleMessage() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: author.id }),
+      });
+      if (!res.ok) return;
+      const { conversation } = await res.json();
+      router.push(`/messages/${conversation.id}`);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <HoverCard openDelay={250} closeDelay={100}>
@@ -66,10 +87,11 @@ export function UserHoverCard({ author }: { author: PostAuthor }) {
             variant="ghost"
             size="sm"
             className="w-full justify-start gap-2 text-xs"
-            disabled
+            onClick={handleMessage}
+            disabled={loading}
           >
             <MessageSquare className="h-3.5 w-3.5" />
-            Envoyer un message
+            {loading ? "Ouverture…" : "Envoyer un message"}
           </Button>
         </div>
       </HoverCardContent>
