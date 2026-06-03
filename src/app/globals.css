@@ -10,16 +10,20 @@
 
   /* SkillSwap brand palette — generates bg, text and border utilities.
      Defined here (not in :root) because the landing is intentionally
-     light-only and must not be remapped by the .dark theme below. */
-  --color-canvas: #f2f2f0;
+     light-only and must not be remapped by the .dark theme below.
+     Core brand colors: #5B1E78 (purple) / #4FA3B1 (teal)
+     / #1F3C45 (deep ink-teal) / #F5F7F8 (canvas). The pastel-named
+     tokens are kept (pistache/peach/powder) so existing utility classes
+     keep working; they now resolve to tints of the new palette. */
+  --color-canvas: #f5f7f8;
   --color-surface: #ffffff;
-  --color-pistache: #c8f59d;
-  --color-peach: #ffa06a;
-  --color-powder: #c7ddf2;
-  --color-deep-green: #244f43;
-  --color-ink: #0d0d0d;
-  --color-muted-ink: #6b6b6b;
-  --color-hairline: rgba(0, 0, 0, 0.07);
+  --color-pistache: #4fa3b1;
+  --color-peach: #5b1e78;
+  --color-powder: #dceef1;
+  --color-deep-green: #1f3c45;
+  --color-ink: #14272d;
+  --color-muted-ink: #5f6f74;
+  --color-hairline: rgba(31, 60, 69, 0.1);
 
   --font-sans: var(--font-inter);
   --font-mono: var(--font-dm-mono);
@@ -60,41 +64,67 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Brand tokens */
+  --color-brand-lime: var(--brand-lime);
+  --color-brand-lime-fg: var(--brand-lime-fg);
+  --color-brand-forest: var(--brand-forest);
+  --color-brand-forest-fg: var(--brand-forest-fg);
 }
 
 :root {
-  --background: oklch(1 0 0);
+  /* Warm off-white background — matches landing page */
+  --background: oklch(0.966 0.004 88);
   --foreground: oklch(0.145 0 0);
+
+  /* Cards stay pure white to lift off the background */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+
+  /* Primary = forest green (#1A3B2F) */
+  --primary: oklch(0.27 0.065 163);
+  --primary-foreground: oklch(0.966 0.012 130);
+
+  --secondary: oklch(0.946 0.005 88);
+  --secondary-foreground: oklch(0.27 0.065 163);
+
+  --muted: oklch(0.946 0.005 88);
+  --muted-foreground: oklch(0.52 0 0);
+
+  --accent: oklch(0.946 0.005 88);
+  --accent-foreground: oklch(0.145 0 0);
+
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+
+  /* Slightly warm border */
+  --border: oklch(0.914 0.005 88);
+  --input: oklch(0.914 0.005 88);
+  --ring: oklch(0.27 0.065 163);
+
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
+
+  /* Sidebar: white bg, lime accent for active items */
+  --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* active item = lime green bg + forest fg */
+  --sidebar-primary: oklch(0.89 0.10 130);
+  --sidebar-primary-foreground: oklch(0.27 0.065 163);
+  --sidebar-accent: oklch(0.946 0.005 88);
+  --sidebar-accent-foreground: oklch(0.145 0 0);
+  --sidebar-border: oklch(0.914 0.005 88);
+  --sidebar-ring: oklch(0.27 0.065 163);
+
+  /* Brand palette — available as bg-brand-lime etc. */
+  --brand-lime: oklch(0.89 0.10 130);
+  --brand-lime-fg: oklch(0.27 0.065 163);
+  --brand-forest: oklch(0.27 0.065 163);
+  --brand-forest-fg: oklch(0.966 0.012 130);
 }
 
 .dark {
@@ -104,8 +134,8 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.89 0.10 130);
+  --primary-foreground: oklch(0.27 0.065 163);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -115,7 +145,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.89 0.10 130);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -123,12 +153,16 @@
   --chart-5: oklch(0.269 0 0);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.89 0.10 130);
+  --sidebar-primary-foreground: oklch(0.27 0.065 163);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.89 0.10 130);
+  --brand-lime: oklch(0.89 0.10 130);
+  --brand-lime-fg: oklch(0.27 0.065 163);
+  --brand-forest: oklch(0.27 0.065 163);
+  --brand-forest-fg: oklch(0.966 0.012 130);
 }
 
 @layer base {

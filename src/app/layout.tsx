@@ -3,6 +3,9 @@ import type { Metadata, Viewport } from "next";
 // DM Sans — the spec's named alternative — for display, Inter for body, DM Mono
 // for labels. All three are loaded via next/font for zero layout shift.
 import { Inter, DM_Sans, DM_Mono } from "next/font/google";
+
+import { TooltipProvider } from "@/components/ui/tooltip";
+
 import "./globals.css";
 
 const inter = Inter({
@@ -43,20 +46,20 @@ export const metadata: Metadata = {
 // mobile browser chrome to the brand canvas so it blends with the page.
 export const viewport: Viewport = {
   colorScheme: "light",
-  themeColor: "#f2f2f0",
+  themeColor: "#f5f7f8",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="fr"
       className={`${inter.variable} ${dmSans.variable} ${dmMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <TooltipProvider delayDuration={0}>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }
