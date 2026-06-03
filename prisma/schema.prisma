@@ -15,10 +15,27 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==================== ENUMS ====================
+
+enum SessionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum XpType {
+  ACCOUNT
+  TUTOR
+  STUDENT
+}
+
+// ==================== PROFILE ====================
+
 /// Application profile, mirrored 1:1 from Supabase `auth.users`.
 /// `id` should equal the Supabase auth user id (UUID). Keep it in sync from
 /// your auth flow — e.g. a Postgres trigger on `auth.users`, or an upsert
-/// right after sign-up. This is just a starter model; adapt it to SkillSwap.
+/// right after sign-up.
 model Profile {
   id        String   @id @db.Uuid
   email     String   @unique
@@ -27,5 +44,140 @@ model Profile {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  accountProgression  AccountProgression?
+  tutorProgression    TutorProgression?
+  studentProgression  StudentProgression?
+  tutoredSessions     TutoringSession[]   @relation("TutoredBy")
+  learnedSessions     TutoringSession[]   @relation("LearnedBy")
+  givenEvaluations    SessionEvaluation[] @relation("GaveEvaluation")
+  receivedEvaluations SessionEvaluation[] @relation("ReceivedEvaluation")
+  xpTransactions      XpTransaction[]
+  userBadges          UserBadge[]
+
   @@map("profiles")
+}
+
+// ==================== PROGRESSION ====================
+
+model AccountProgression {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id") @db.Uuid
+  totalXp   Int      @default(0) @map("total_xp")
+  level     Int      @default(1)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account_progression")
+}
+
+model TutorProgression {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id") @db.Uuid
+  totalXp        Int      @default(0) @map("total_xp")
+  level          Int      @default(1)
+  sessionsTaught Int      @default(0) @map("sessions_taught")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tutor_progression")
+}
+
+model StudentProgression {
+  id               String   @id @default(cuid())
+  userId           String   @unique @map("user_id") @db.Uuid
+  totalXp          Int      @default(0) @map("total_xp")
+  level            Int      @default(1)
+  sessionsAttended Int      @default(0) @map("sessions_attended")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  profile Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("student_progression")
+}
+
+// ==================== XP AUDIT LOG ====================
+
+model XpTransaction {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id") @db.Uuid
+  xpType    XpType   @map("xp_type")
+  amount    Int
+  reason    String
+  sessionId String?  @map("session_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  profile Profile          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session TutoringSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@map("xp_transactions")
+}
+
+// ==================== SESSIONS ====================
+
+model TutoringSession {
+  id          String        @id @default(cuid())
+  tutorId     String        @map("tutor_id") @db.Uuid
+  studentId   String        @map("student_id") @db.Uuid
+  topic       String?
+  status      SessionStatus @default(PENDING)
+  scheduledAt DateTime?     @map("scheduled_at")
+  startedAt   DateTime?     @map("started_at")
+  completedAt DateTime?     @map("completed_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  tutor          Profile             @relation("TutoredBy", fields: [tutorId], references: [id], onDelete: Restrict)
+  student        Profile             @relation("LearnedBy", fields: [studentId], references: [id], onDelete: Restrict)
+  evaluations    SessionEvaluation[]
+  xpTransactions XpTransaction[]
+
+  @@map("tutoring_sessions")
+}
+
+// ==================== EVALUATIONS ====================
+
+model SessionEvaluation {
+  id          String   @id @default(cuid())
+  sessionId   String   @map("session_id")
+  evaluatorId String   @map("evaluator_id") @db.Uuid
+  evaluateeId String   @map("evaluatee_id") @db.Uuid
+  rating      Int
+  comment     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  session   TutoringSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  evaluator Profile         @relation("GaveEvaluation", fields: [evaluatorId], references: [id], onDelete: Restrict)
+  evaluatee Profile         @relation("ReceivedEvaluation", fields: [evaluateeId], references: [id], onDelete: Restrict)
+
+  @@unique([sessionId, evaluatorId])
+  @@map("session_evaluations")
+}
+
+// ==================== BADGES ====================
+
+model Badge {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  xpReward    Int      @default(0) @map("xp_reward")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  userBadges UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String   @map("user_id") @db.Uuid
+  badgeId  String   @map("badge_id")
+  earnedAt DateTime @default(now()) @map("earned_at")
+
+  profile Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge   Badge   @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
 }
