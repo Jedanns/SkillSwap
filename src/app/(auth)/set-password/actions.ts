@@ -8,10 +8,8 @@ export type SetPasswordState = {
 };
 
 function validatePassword(password: string): string | null {
-  if (password.length < 8) return "8 caractères minimum.";
-  if (!/[A-Z]/.test(password)) return "Au moins une majuscule requise.";
-  if (!/[a-z]/.test(password)) return "Au moins une minuscule requise.";
-  if (!/[0-9]/.test(password)) return "Au moins un chiffre requis.";
+  // Only rule: at least 6 characters. No case/digit/symbol requirements.
+  if (password.length < 6) return "6 caractères minimum.";
   return null;
 }
 
