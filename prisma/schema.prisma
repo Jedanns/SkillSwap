@@ -149,7 +149,7 @@ model Promotion {
 /// `id` equals the Supabase auth user id (UUID) and is kept in sync by the
 /// `on_auth_user_created` trigger (see the RLS/trigger SQL migration).
 model Profile {
-  id       String  @id @db.Uuid
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email    String  @unique
   username String? @unique
 
@@ -162,6 +162,10 @@ model Profile {
   promotionId String? @map("promotion_id") @db.Uuid
   githubUrl   String? @map("github_url")
   linkedinUrl String? @map("linkedin_url")
+
+  // Authentication is fully delegated to Supabase Auth (auth.users). This
+  // profile row is created by the `on_auth_user_created` trigger; password,
+  // email verification and sessions are owned by Supabase — no auth columns here.
 
   // Onboarding — drives the forced redirect to profile completion (Volet 2).
   isProfileComplete Boolean   @default(false) @map("is_profile_complete")
