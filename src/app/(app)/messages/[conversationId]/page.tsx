@@ -18,9 +18,11 @@ export default async function ConversationPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) redirect("/login");
+
   const participant = await prisma.conversationParticipant.findUnique({
     where: {
-      conversationId_profileId: { conversationId, profileId: user!.id },
+      conversationId_profileId: { conversationId, profileId: user.id },
     },
     select: { profileId: true },
   });
@@ -40,7 +42,7 @@ export default async function ConversationPage({
     }),
     prisma.conversationParticipant.update({
       where: {
-        conversationId_profileId: { conversationId, profileId: user!.id },
+        conversationId_profileId: { conversationId, profileId: user.id },
       },
       data: { lastReadAt: new Date() },
     }),
@@ -57,7 +59,7 @@ export default async function ConversationPage({
   return (
     <ChatWindow
       conversationId={conversationId}
-      currentUserId={user!.id}
+      currentUserId={user.id}
       initialMessages={messages}
       initialHasMore={hasMore}
       participants={participantsMap}

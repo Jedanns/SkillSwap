@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { ConversationList } from "@/components/messages/ConversationList";
@@ -10,17 +11,19 @@ export default async function MessagesLayout({ children }: { children: React.Rea
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) redirect("/login");
+
   const rows = await prisma.conversation.findMany({
-    where: { participants: { some: { profileId: user!.id } } },
+    where: { participants: { some: { profileId: user.id } } },
     orderBy: { lastMessageAt: "desc" },
-    include: conversationInclude(user!.id),
+    include: conversationInclude(user.id),
   });
 
-  const conversations = rows.map((r) => serializeConversation(r, user!.id));
+  const conversations = rows.map((r) => serializeConversation(r, user.id));
 
   return (
     <MessagesPanelShell
-      left={<ConversationList initialConversations={conversations} currentUserId={user!.id} />}
+      left={<ConversationList initialConversations={conversations} currentUserId={user.id} />}
     >
       {children}
     </MessagesPanelShell>
