@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Calendar, GraduationCap, Rss } from "lucide-react";
+import { BookOpen, Calendar, GraduationCap, MessageSquare, Rss } from "lucide-react";
 
 import {
   Sidebar,
@@ -22,6 +22,7 @@ const navMain = [
   { icon: BookOpen, label: "Compétences", href: "/competences" },
   { icon: GraduationCap, label: "Sessions", href: "/sessions" },
   { icon: Calendar, label: "Planning", href: "/planning" },
+  { icon: MessageSquare, label: "Messages", href: "/messages" },
 ];
 
 export function AppSidebar() {
