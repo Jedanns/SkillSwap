@@ -384,6 +384,7 @@ function AddSkillModal({
   const [adding, setAdding] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
   const [showCreate, setShowCreate] = useState(false);
+  const [addError, setAddError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
@@ -409,6 +410,7 @@ function AddSkillModal({
   async function handleAdd(skill: CatalogSkill) {
     if (skill.isCertified) return;
     setAdding(skill.id);
+    setAddError("");
     try {
       const res = await fetch("/api/user/skills", {
         method: "POST",
@@ -418,8 +420,12 @@ function AddSkillModal({
       if (res.ok || res.status === 409) {
         setAdded((prev) => new Set(prev).add(skill.id));
         onAdd(skill);
+      } else {
+        setAddError("Impossible d'ajouter cette competence, reessayez.");
       }
-    } catch { /* retry */ } finally {
+    } catch {
+      setAddError("Impossible d'ajouter cette competence, reessayez.");
+    } finally {
       setAdding(null);
     }
   }
@@ -458,6 +464,10 @@ function AddSkillModal({
             />
           </div>
         </div>
+
+        {addError && (
+          <p className="mx-6 mb-2 rounded-lg bg-peach/20 px-3 py-2 text-xs font-medium text-ink">{addError}</p>
+        )}
 
         <div className="max-h-72 overflow-y-auto px-3 pb-2">
           {results.length === 0 && !noExactMatch ? (

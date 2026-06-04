@@ -199,45 +199,7 @@ export async function removeUserSkill(profileId: string, userSkillId: string) {
   return count > 0;
 }
 
-// Pings (a request to learn a skill)
-
-export async function createPing(requesterId: string, skillId: string, message?: string) {
-  const existing = await prisma.skillPing.findFirst({
-    where: { requesterId, skillId, status: "OPEN" },
-  });
-
-  if (existing) return { alreadyExists: true as const, ping: existing };
-
-  const ping = await prisma.skillPing.create({
-    data: { requesterId, skillId, message },
-  });
-  return { alreadyExists: false as const, ping };
-}
-
-// Skill catalog search with holder details (for "Rechercher une compétence" tab)
-
-export async function searchSkillsCatalog(query?: string, categoryId?: string) {
-  return prisma.skill.findMany({
-    where: {
-      isDormant: false,
-      ...(categoryId ? { categoryId } : {}),
-      ...(query
-        ? {
-            OR: [
-              { name: { contains: query, mode: "insensitive" } },
-              { canonicalDescription: { contains: query, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    },
-    include: {
-      category: true,
-      _count: { select: { holders: true, sessions: true } },
-    },
-    orderBy: [{ heatScore: "desc" }, { name: "asc" }],
-    take: 50,
-  });
-}
+// Pings (a request to learn a skill) — see createPingWithNotifications below
 
 export async function getSkillWithHolders(skillId: string) {
   return prisma.skill.findUnique({

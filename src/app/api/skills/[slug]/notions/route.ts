@@ -20,6 +20,15 @@ export async function POST(
     return NextResponse.json({ error: "Compétence introuvable." }, { status: 404 });
   }
 
+  // Only the skill's creator may add notions. RLS enforces this at the DB level
+  // too, but reject explicitly here so the caller gets a clear 403.
+  if (skill.createdBy.id !== user.id) {
+    return NextResponse.json(
+      { error: "Seul le créateur de la compétence peut ajouter des notions." },
+      { status: 403 },
+    );
+  }
+
   const body = await req.json();
   const notions = Array.isArray(body?.notions) ? body.notions : [];
 
