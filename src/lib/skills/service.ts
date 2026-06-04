@@ -113,6 +113,9 @@ export async function claimSkill(profileId: string, skillId: string) {
       profileId,
       skillId,
       source: "SELF_ATTRIBUTED",
+      // Non-certified skills can be taught freely by any holder (peer model).
+      // Certified skills are blocked above, so every self-attribution can teach.
+      canTeach: true,
     },
     include: {
       skill: { select: { name: true, slug: true } },
@@ -178,7 +181,7 @@ export async function addUserSkill(profileId: string, skillId: string) {
   if (skill.isCertified) throw new Error("SKILL_CERTIFIED");
 
   return prisma.userSkill.create({
-    data: { profileId, skillId, source: "SELF_ATTRIBUTED" },
+    data: { profileId, skillId, source: "SELF_ATTRIBUTED", canTeach: true },
     include: {
       skill: {
         select: { id: true, name: true, slug: true, isCertified: true, category: true },

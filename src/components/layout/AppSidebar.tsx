@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Calendar, GraduationCap, MessageSquare, Rss } from "lucide-react";
+import { BookOpen, Calendar, GraduationCap, History, Home, MessageSquare, Rss, Star, Trophy, TrendingUp } from "lucide-react";
 
 import {
   Sidebar,
@@ -18,11 +18,16 @@ import {
 } from "@/components/ui/sidebar";
 
 const navMain = [
+  { icon: Home, label: "Accueil", href: "/home" },
   { icon: Rss, label: "Fil d'actualité", href: "/feed" },
   { icon: BookOpen, label: "Compétences", href: "/competences" },
-  { icon: GraduationCap, label: "Sessions", href: "/sessions" },
+  { icon: GraduationCap, label: "Tutoring", href: "/sessions" },
   { icon: Calendar, label: "Planning", href: "/planning" },
   { icon: MessageSquare, label: "Messages", href: "/messages" },
+  { icon: Star, label: "Feedback", href: "/feedback" },
+  { icon: TrendingUp, label: "Progression", href: "/progression" },
+  { icon: History, label: "Historique", href: "/historique" },
+  { icon: Trophy, label: "Classement", href: "/leaderboard" },
 ];
 
 export function AppSidebar() {

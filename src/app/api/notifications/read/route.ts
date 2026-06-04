@@ -12,7 +12,7 @@ export async function PATCH() {
   }
 
   await prisma.notification.updateMany({
-    where: { recipientId: user.id, type: "MESSAGE_RECEIVED", isRead: false },
+    where: { recipientId: user.id, isRead: false },
     data: { isRead: true },
   });
 

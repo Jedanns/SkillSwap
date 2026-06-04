@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-import { Heart, MessageCircle, MoreHorizontal } from "lucide-react";
+import { Heart, Loader2, MessageCircle, MoreHorizontal, Send } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -46,11 +47,32 @@ function relativeTime(d: string) {
 }
 
 export function PostCard({ post, currentUserId, currentUserAuthor }: Props) {
+  const router = useRouter();
   const [liked, setLiked] = useState(post.likes.some((l) => l.profile_id === currentUserId));
   const [likeCount, setLikeCount] = useState(post.like_count);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<CommentData[]>(post.comments);
   const [commentCount, setCommentCount] = useState(post.comment_count);
+  const [contacting, setContacting] = useState(false);
+
+  const isOwnPost = post.author.id === currentUserId;
+
+  async function handleContact() {
+    setContacting(true);
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: post.author.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        router.push(`/messages/${data.conversation.id}`);
+      }
+    } finally {
+      setContacting(false);
+    }
+  }
 
   async function handleLike() {
     const prevLiked = liked;
@@ -147,6 +169,19 @@ export function PostCard({ post, currentUserId, currentUserAuthor }: Props) {
           <MessageCircle className="h-4 w-4" />
           <span>{commentCount > 0 ? commentCount : "Commenter"}</span>
         </Button>
+
+        {!isOwnPost && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleContact}
+            disabled={contacting}
+            className="ml-auto gap-1.5 rounded-lg text-xs font-normal h-8 px-2.5 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {contacting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            <span className="hidden sm:inline">Contacter</span>
+          </Button>
+        )}
       </CardFooter>
 
       {showComments && (

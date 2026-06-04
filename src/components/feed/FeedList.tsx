@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useInView } from "react-intersection-observer";
 
+import { createClient } from "@/lib/supabase/client";
 import { CreatePost } from "./CreatePost";
 import { PostCard } from "./PostCard";
 import { PostCardSkeleton } from "./PostCardSkeleton";
 import type { CommentData, PostAuthor, PostData } from "./types";
+
+const FILTERS: { value: "ALL" | PostData["kind"]; label: string }[] = [
+  { value: "ALL", label: "Tout" },
+  { value: "GENERAL", label: "Général" },
+  { value: "TUTORING_OFFER", label: "Tutorat" },
+  { value: "ANNOUNCEMENT", label: "Annonces" },
+];
 
 type Props = {
   initialPosts: PostData[];
@@ -39,11 +47,38 @@ export function FeedList({ initialPosts, initialHasMore, currentUserId, currentU
   const [posts, setPosts] = useState<PostData[]>(initialPosts);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<"ALL" | PostData["kind"]>("ALL");
   const cursorRef = useRef<string | null>(
     initialPosts.length > 0 ? initialPosts[initialPosts.length - 1].id : null,
   );
 
   const { ref: sentinelRef, inView } = useInView({ threshold: 0 });
+
+  // Realtime: when anyone publishes, pull the first page and prepend new posts.
+  const syncNewPosts = useCallback(async () => {
+    const res = await fetch("/api/posts");
+    if (!res.ok) return;
+    const data = await res.json();
+    const fresh: PostData[] = data.posts.map(normalizePost);
+    setPosts((prev) => {
+      const known = new Set(prev.map((p) => p.id));
+      const toAdd = fresh.filter((p) => !known.has(p.id));
+      return toAdd.length ? [...toAdd, ...prev] : prev;
+    });
+  }, []);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("feed-posts")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, () => {
+        syncNewPosts();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [syncNewPosts]);
 
   useEffect(() => {
     if (!inView || !hasMore || loading) return;
@@ -65,18 +100,34 @@ export function FeedList({ initialPosts, initialHasMore, currentUserId, currentU
     loadMore();
   }, [inView, hasMore, loading]);
 
+  const visiblePosts = filter === "ALL" ? posts : posts.filter((p) => p.kind === filter);
+
   return (
     <div className="flex flex-col gap-4">
       <CreatePost currentUserAuthor={currentUserAuthor} onPostCreated={(p) => setPosts((prev) => [p, ...prev])} />
 
-      {posts.length === 0 && !loading && (
+      <div className="flex gap-1 rounded-xl border border-border bg-card p-1">
+        {FILTERS.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => setFilter(f.value)}
+            className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              filter === f.value ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {visiblePosts.length === 0 && !loading && (
         <div className="rounded-xl border border-dashed border-border bg-card px-8 py-14 text-center">
           <p className="text-sm font-medium text-foreground">Aucune publication</p>
           <p className="mt-1 text-xs text-muted-foreground">Sois le premier à partager quelque chose !</p>
         </div>
       )}
 
-      {posts.map((post) => (
+      {visiblePosts.map((post) => (
         <PostCard key={post.id} post={post} currentUserId={currentUserId} currentUserAuthor={currentUserAuthor} />
       ))}
 

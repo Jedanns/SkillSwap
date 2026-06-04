@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { SessionStatus } from "@/generated/prisma/enums";
 
 const GRID_START_MIN = 8 * 60;
@@ -19,6 +20,7 @@ function formatMin(totalMin: number) {
 }
 
 type Props = {
+  id: string;
   title: string;
   skillName: string | null;
   tutorName: string | null;
@@ -28,14 +30,15 @@ type Props = {
   cancelled?: boolean;
 };
 
-export function SessionBlock({ title, skillName, tutorName, startMinutes, durationMinutes, status, cancelled }: Props) {
+export function SessionBlock({ id, title, skillName, tutorName, startMinutes, durationMinutes, status, cancelled }: Props) {
   const top = (startMinutes - GRID_START_MIN) * PX_PER_MIN;
   const height = Math.max(40, durationMinutes * PX_PER_MIN);
   const endMinutes = startMinutes + durationMinutes;
 
   return (
-    <div
-      className={`absolute inset-x-1 rounded-lg px-2 py-1.5 overflow-hidden cursor-default select-none ${STATUS_STYLES[status]}`}
+    <Link
+      href={`/sessions?session=${id}`}
+      className={`absolute inset-x-1 block rounded-lg px-2 py-1.5 overflow-hidden cursor-pointer select-none transition hover:brightness-95 hover:ring-2 hover:ring-foreground/20 ${STATUS_STYLES[status]}`}
       style={{ top, height }}
     >
       <p className={`text-xs font-semibold leading-tight truncate font-heading ${cancelled ? "line-through opacity-60" : ""}`}>
@@ -54,6 +57,6 @@ export function SessionBlock({ title, skillName, tutorName, startMinutes, durati
           )}
         </div>
       )}
-    </div>
+    </Link>
   );
 }

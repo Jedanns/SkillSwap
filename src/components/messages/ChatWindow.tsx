@@ -1,13 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useInView } from "react-intersection-observer";
+import { GraduationCap, Phone, Video } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { useMessagesNotify } from "./MessagesPanelShell";
 import { MessageInput } from "./MessageInput";
 import type { MessageData, MessageParticipant } from "./types";
+
+function participantName(p: MessageParticipant): string {
+  if (p.displayName) return p.displayName;
+  const full = [p.firstName, p.lastName].filter(Boolean).join(" ").trim();
+  return full || p.username || "Conversation";
+}
 
 function getInitials(p: MessageParticipant): string {
   if (p.displayName) return p.displayName.slice(0, 2).toUpperCase();
@@ -48,6 +57,10 @@ export function ChatWindow({
 
   const { ref: topSentinelRef, inView: topInView } = useInView({ threshold: 0 });
   const notifyConversationList = useMessagesNotify();
+  const router = useRouter();
+
+  const otherId = Object.keys(participants).find((id) => id !== currentUserId);
+  const other = otherId ? participants[otherId] : undefined;
 
   // Scroll to bottom on mount
   useEffect(() => {
@@ -174,6 +187,35 @@ export function ChatWindow({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {other && (
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-white/95 px-4 py-2.5 backdrop-blur-sm">
+          <Link href={other.username ? `/u/${other.username}` : "#"} className="flex min-w-0 items-center gap-2.5">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={other.avatarUrl ?? undefined} />
+              <AvatarFallback className="text-[10px]">{getInitials(other)}</AvatarFallback>
+            </Avatar>
+            <span className="truncate text-sm font-semibold text-foreground">{participantName(other)}</span>
+          </Link>
+          <div className="flex items-center gap-1.5">
+            {/* WebRTC audio/video — deferred (see docs/FOLLOWUP.md). Disabled, non-dead placeholder. */}
+            <button type="button" disabled title="Appel audio (bientôt)" className="rounded-lg p-2 text-muted-foreground/50 cursor-not-allowed" aria-label="Appel audio (bientôt)">
+              <Phone className="h-4 w-4" />
+            </button>
+            <button type="button" disabled title="Appel vidéo (bientôt)" className="rounded-lg p-2 text-muted-foreground/50 cursor-not-allowed" aria-label="Appel vidéo (bientôt)">
+              <Video className="h-4 w-4" />
+            </button>
+            {otherId && (
+              <button
+                type="button"
+                onClick={() => router.push(`/sessions?propose=${otherId}`)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background transition hover:bg-foreground/85"
+              >
+                <GraduationCap className="h-3.5 w-3.5" /> Proposer une session
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}

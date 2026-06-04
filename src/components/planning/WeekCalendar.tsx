@@ -137,6 +137,7 @@ export function WeekCalendar({ sessions, weekStart }: Props) {
             return (
               <SessionBlock
                 key={s.id}
+                id={s.id}
                 title={s.title}
                 skillName={s.skillName}
                 tutorName={s.tutorName}
