@@ -522,7 +522,7 @@ function AddSkillModal({
         {noExactMatch && (
           <div className="border-t border-hairline px-6 py-4">
             <p className="text-sm text-muted-ink">
-              <span className="font-semibold text-ink">"{query}"</span> n existe pas encore dans le catalogue.
+              <span className="font-semibold text-ink">&quot;{query}&quot;</span> n existe pas encore dans le catalogue.
             </p>
             <button
               onClick={() => setShowCreate(true)}
@@ -770,7 +770,7 @@ function CreateSkillModal({
                         ) : (
                           <Plus className="h-3.5 w-3.5 text-muted-ink" />
                         )}
-                        Creer "{categorySearch.trim()}"
+                        Creer &quot;{categorySearch.trim()}&quot;
                       </button>
                     </div>
                   )}
@@ -1170,8 +1170,8 @@ function RechercherCompetenceTab() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
     const timer = setTimeout(() => {
+      setLoading(true);
       const qs = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : "";
       fetch(`/api/skills${qs}`, { signal: controller.signal })
         .then((r) => (r.ok ? r.json() : []))

@@ -87,7 +87,7 @@ export function serializeMessage(row: MessageRow): MessageData {
   };
 }
 
-export const conversationInclude = (currentUserId: string) => ({
+export const conversationInclude = () => ({
   participants: {
     include: { profile: { select: participantSelect } },
   },

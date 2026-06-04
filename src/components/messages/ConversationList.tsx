@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -18,37 +18,35 @@ export function ConversationList({ initialConversations, currentUserId }: Props)
   const pathname = usePathname();
   const subscribe = useMessagesSubscribe();
 
+  const applyMessageUpdate = useCallback(
+    (conversationId: string, preview: string, sentAt: string, senderId: string) => {
+      setConversations((prev) => {
+        const exists = prev.some((c) => c.id === conversationId);
+        if (!exists) return prev;
+        const updated = prev.map((conv) =>
+          conv.id !== conversationId
+            ? conv
+            : {
+                ...conv,
+                lastMessageAt: sentAt,
+                lastMessagePreview: preview.slice(0, 80),
+                unread: senderId !== currentUserId,
+              },
+        );
+        return [...updated].sort((a, b) =>
+          (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
+        );
+      });
+    },
+    [currentUserId],
+  );
+
   // Update preview immediately when the current user sends a message
   useEffect(() => {
     return subscribe(({ conversationId, preview, sentAt, senderId }) => {
       applyMessageUpdate(conversationId, preview, sentAt, senderId);
     });
-  }, [subscribe]);
-
-  function applyMessageUpdate(
-    conversationId: string,
-    preview: string,
-    sentAt: string,
-    senderId: string,
-  ) {
-    setConversations((prev) => {
-      const exists = prev.some((c) => c.id === conversationId);
-      if (!exists) return prev;
-      const updated = prev.map((conv) =>
-        conv.id !== conversationId
-          ? conv
-          : {
-              ...conv,
-              lastMessageAt: sentAt,
-              lastMessagePreview: preview.slice(0, 80),
-              unread: senderId !== currentUserId,
-            },
-      );
-      return [...updated].sort((a, b) =>
-        (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
-      );
-    });
-  }
+  }, [subscribe, applyMessageUpdate]);
 
   useEffect(() => {
     const supabase = createClient();

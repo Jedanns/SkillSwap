@@ -16,7 +16,7 @@ export default async function MessagesLayout({ children }: { children: React.Rea
   const rows = await prisma.conversation.findMany({
     where: { participants: { some: { profileId: user.id } } },
     orderBy: { lastMessageAt: "desc" },
-    include: conversationInclude(user.id),
+    include: conversationInclude(),
   });
 
   const conversations = rows.map((r) => serializeConversation(r, user.id));

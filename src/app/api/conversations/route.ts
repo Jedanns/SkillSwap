@@ -20,7 +20,7 @@ export async function GET() {
   const rows = await prisma.conversation.findMany({
     where: { participants: { some: { profileId: user.id } } },
     orderBy: { lastMessageAt: "desc" },
-    include: conversationInclude(user.id),
+    include: conversationInclude(),
   });
 
   return Response.json({
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         { participants: { some: { profileId: targetUserId } } },
       ],
     },
-    include: conversationInclude(user.id),
+    include: conversationInclude(),
   });
 
   if (existing) {
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         create: [{ profileId: user.id }, { profileId: targetUserId }],
       },
     },
-    include: conversationInclude(user.id),
+    include: conversationInclude(),
   });
 
   return Response.json(
